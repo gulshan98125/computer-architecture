@@ -1,14 +1,14 @@
 .equ SWI_Exit, 0x11
 .equ SWI_PrInt,0x6b
 .data
-        input:  .asciz         "10+(2*(3+(4-(5*(6-(9*7))))))"
+        input:  .asciz         "10-(2-(3*(4+5)))"
         .align
 
 .text
         .global  main
 
 main:
-
+		@ r1 contains the final result
 		@ r4 = input address (GLOBAL)
 		@ r5 = Index of pointer (GLOBAL)
 		@ r6 = pointer_val, latest fetched byte (GLOBAL)
@@ -141,7 +141,5 @@ main:
 					mov pc, lr
 
 		EXIT:	
-				mov R0, r0
-				mov R1, r1
 				swi SWI_PrInt
 				swi SWI_Exit
