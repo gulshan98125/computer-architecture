@@ -1,7 +1,8 @@
 .equ SWI_Exit, 0x11
 .equ SWI_PrInt,0x6b
+.equ Stdout, 1
 .data
-        input:  .asciz         "10-(2-(3*(4+5)))"
+        input:  .asciz         "100*(3*4)+(90+10)+(20)"
         .align
 
 .text
