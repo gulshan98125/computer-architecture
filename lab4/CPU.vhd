@@ -1,15 +1,8 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
 entity CPU is
     Port ( clock : in STD_LOGIC;
            reset : in STD_LOGIC;
@@ -45,18 +38,14 @@ signal opcode : std_logic_vector (3 downto 0);
 signal L_bit : std_logic;
 signal I_bit : std_logic;
 signal U_bit : std_logic;
-signal write_enable_result : STD_LOGIC:='0';
 signal Rn : std_logic_vector(3 downto 0);
 signal Rd : std_logic_vector(3 downto 0);
 signal Rm : std_logic_vector(3 downto 0);
 signal Rn_val : std_logic_vector(31 downto 0):= (others => '0');
 signal Rd_val : std_logic_vector(31 downto 0);
 signal Rm_val : std_logic_vector(31 downto 0):= (others => '0');
-signal address_to_memory : std_logic_vector(31 downto 0):= (others => '0');
 signal FLAGS: std_logic_vector(3 downto 0):="0000";     --ZCNV
 signal offset : std_logic_vector(31 downto 0):= (others => '0');
-signal PC_final : std_logic_vector(31 downto 0):= (others => '0');
-signal PC_semi_final : std_logic_vector(31 downto 0):= (others => '0');
 
 type register_list is array (0 to 14) of std_logic_vector(31 downto 0);
 signal registers : register_list;
@@ -71,32 +60,6 @@ begin
             shift_spec <= instruction (11 downto 4);
             opcode <= instruction (24 downto 21);
             L_bit <= instruction(20);
-            
-            ADD_MAP: Adder port map(
-                adder_in1 => Rn_val,
-                adder_in2 => Rm_val,
-                adder_sum_out => Rd_val
-                );
-
-            LDR_STR_MAP: Adder port map(
-                adder_in1 => Rn_val,
-                adder_in2 => Rm_val,
-                adder_sum_out => address_to_memory
-                );
-
-            PC_PLUS_4: Adder port map(            --pc = pc+4
-                adder_in1 => PC,
-                adder_in2 => offset,
-                adder_sum_out => PC_semi_final
-                );
-
-            BRANCH_OFFSET_ADD: Adder port map(
-                adder_in1 => PC_semi_final,
-                adder_in2 => "00000000000000000000000000000100",
-                adder_sum_out => PC_final
-                );
-
-
             
     process(clock)
         begin
@@ -113,15 +76,18 @@ begin
                                     i_decoded <= mov;
                                 when "1010" => --cmp
                                     i_decoded <= cmp;
+                                when others => --others
+                                    i_decoded <= unknown;
                             end case;
                     when "01" =>
                         instr_class <= DT;
-                        instr_class <= DP;
                             case(L_bit) is
                                 when '0' => --str
                                     i_decoded <= str;
                                 when '1' => --ldr
                                     i_decoded <= ldr;
+                                when others =>
+                                    i_decoded <= unknown;
                             end case;
                     when "10" =>
                         instr_class <= branch;
@@ -132,6 +98,8 @@ begin
                                 i_decoded <= beq;
                             when "0001" => --bne
                                 i_decoded <= bne;
+                            when others =>
+                                i_decoded <= unknown;
                         end case;
                     when others =>
                         instr_class <= unknown;
@@ -152,9 +120,10 @@ begin
                                 if I_bit='1' then
                                     --add immediate
                                     Rn_val <= registers(register_index1);
-                                    Rd_val <= registers(register_index2);
                                     Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
                                     Rm_val(31 downto 8) <= (others => '0');
+                                    Rd_val <= Rn_val + Rm_val;
+                                    registers(register_index2) <= Rd_val;
 
 
                                 else
@@ -162,29 +131,48 @@ begin
                                     Rm <= instruction(3 downto 0);
                                     register_index3 <= to_integer(unsigned(Rm));
                                     Rm_val <= registers(register_index3);
+                                    Rn_val <= registers(register_index1);
+                                    Rd_val <= Rn_val + Rm_val;
+                                    registers(register_index2) <= Rd_val;
                                     
                                 end if;
                             when sub =>
                                 if I_bit='1' then
                                     --sub immediate
+                                    Rn_val <= registers(register_index1);
+                                    Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
+                                    Rm_val(31 downto 8) <= (others => '0');
+                                    Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
+                                    Rd_val <= Rn_val + Rm_val;
+                                    registers(register_index2) <= Rd_val;
+
                                 else
-                                    Rm <= instruction(3 downto 0);
                                     --normal sub
+                                    Rm <= instruction(3 downto 0);
+                                    register_index3 <= to_integer(unsigned(Rm));
+                                    Rn_val <= registers(register_index1);
+                                    Rm_val <= registers(register_index3);
+                                    Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
+                                    Rd_val <= Rn_val + Rm_val;
+                                    registers(register_index2) <= Rd_val;
+
                                 end if;
                             when cmp =>
                                 if I_bit='1' then
-                                    --cmp immediate
+                                    --cmp immediate     --cmp ke operands ka doubt
                                 else
                                     Rm <= instruction(3 downto 0);
                                     --normal cmp
                                 end if;
                             when mov =>
-                                if I_bit='1' then
+                                if I_bit='1' then       --mov ke operands ka doubt
                                     --mov immediate
                                 else
                                     Rm <= instruction(3 downto 0);
                                     --normal mov
                                 end if;
+                            when others =>
+                                --do nothing
                         end case;
                     
                     when DT =>
@@ -200,25 +188,43 @@ begin
                                 if U_bit='1' then
                                     --ldr immediate offset +
                                     Rn_val <= registers(register_index1);
-                                    Rd_val <= registers(register_index2);
                                     Rm_val(11 downto 0) <= instruction(11 downto 0);
                                     Rm_val(31 downto 12) <= (others => '0');
+                                    addr_to_data_mem <= Rn_val + Rm_val;
+                                    --after memory gets address--
+                                    registers(register_index2) <= data_from_data_mem;
 
                                 else
                                     --ldr immediate offset -
+                                    Rn_val <= registers(register_index1);
+                                    Rm_val(11 downto 0) <= instruction(11 downto 0);
+                                    Rm_val(31 downto 12) <= (others => '0');
+                                    Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
+                                    addr_to_data_mem <= Rn_val + Rm_val;
+                                    --after getting address--
+                                    registers(register_index2) <= data_from_data_mem;
                                 end if;
                             when str =>
                                 if U_bit='1' then
                                     --str immediate offset +
                                     Rn_val <= registers(register_index1);
-                                    Rd_val <= registers(register_index2);
                                     Rm_val(11 downto 0) <= instruction(11 downto 0);
                                     Rm_val(31 downto 12) <= (others => '0');
-                                    write_enable_result <= '1';
+                                    wr_enable_to_dm <= '1';
+                                    addr_to_data_mem <= Rn_val + Rm_val;
+                                    data_to_data_mem <= registers(register_index2);
                                 else
                                     --str immediate offset -
-                                    write_enable_result <= '1';
+                                    Rn_val <= registers(register_index1);
+                                    Rm_val(11 downto 0) <= instruction(11 downto 0);
+                                    Rm_val(31 downto 12) <= (others => '0');
+                                    Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
+                                    wr_enable_to_dm <= '1';
+                                    addr_to_data_mem <= Rn_val + Rm_val;
+                                    data_to_data_mem <= registers(register_index2);
                                 end if;
+                            when others =>
+                                --do nothing
 
                         end case;
                     
@@ -232,7 +238,6 @@ begin
                                     else
                                         offset(31 downto 24)<="00000000";
                                     end if;
-                                    --pc = pc+offset
                                 else
                                     -- do nothing
                                 end if;
@@ -245,7 +250,6 @@ begin
                                     else
                                         offset(31 downto 24)<="00000000";
                                     end if;
-                                    --pc = pc+offset
                                 else
                                     --do nothing
                                 end if;
@@ -256,51 +260,16 @@ begin
                                 else
                                     offset(31 downto 24)<="00000000";
                                 end if;
-                                --pc = pc+offset
+                            when others =>
+                                --do nothing
                         end case;
-                end case;
-            end if;
-    end process;
-
-    process(clock)
-        begin
-            if falling_edge(clock) then
-                PC <= PC_final;
-                case(instr_class) is
-                    when DP =>
-                        Rd <= instruction(15 downto 12);
-                        register_index2 <= to_integer(unsigned(Rd));
-                        registers(register_index2) <= Rd_val;
-
-                    when DT =>
-                        case(i_decoded) is
-                            when ldr =>
-                                Rd <= instruction(15 downto 12);
-                                register_index2 <= to_integer(unsigned(Rd));
-                                registers(register_index2) <= data_from_data_mem;
-                            when str =>
-                                Rd <= instruction(15 downto 12);
-                                register_index2 <= to_integer(unsigned(Rd));
-                                addr_to_data_mem <= address_to_memory;
-                                data_to_data_mem <= registers(register_index2);
-
-                        end case;
-
-                    when branch =>
-                        addr_to_prog_mem <= PC;
-
                     when unknown =>
                         --do nothing
                 end case;
             end if;
-            
-    end process;
-    --pc = pc+4
-    
-
-    addr_to_data_mem <= address_to_memory;
-    wr_enable_to_dm <= write_enable_result;
+    PC <= PC + offset;
+    PC <= PC + "00000000000000000000000000000100";
     addr_to_prog_mem <= PC;
-
+    end process;
 
 end Behavioral;
