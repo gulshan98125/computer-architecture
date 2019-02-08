@@ -46,7 +46,6 @@
     signal Rd_val : std_logic_vector(31 downto 0);
     signal Rm_val : std_logic_vector(31 downto 0):= (others => '0');
     signal FLAGS: std_logic_vector(3 downto 0):="0000";     --ZCNV
-    signal offset : std_logic_vector(31 downto 0):= (others => '0');
 
     type register_list is array (0 to 14) of std_logic_vector(31 downto 0);
     signal registers : register_list:=(others=>x"00000000");
@@ -77,7 +76,19 @@
                         beq when instr_class=branch and cond="0000" else
                         bne when instr_class=branch and cond="0001" else
                         unknown;
+        I_bit <= instruction(25);
+        U_bit <= instruction(23);
+        Rn <= instruction(19 downto 16);
+        Rd <= instruction(15 downto 12);
+        Rm <= instruction(3 downto 0);
+        register_index1 <= to_integer(unsigned(Rn));
+        register_index2 <= to_integer(unsigned(Rd));
+        register_index3 <= to_integer(unsigned(Rm));
+
         process(clock, reset)
+            variable temp1 : std_logic_vector(31 downto 0);
+            variable offset : std_logic_vector(31 downto 0):="00000000000000000000000000000000";
+            variable PC_VAR: std_logic_vector(31 downto 0):="00000000000000000000000000000000";
             begin
                 if rising_edge(clock) then
                     if (reset = '1') then
@@ -85,68 +96,42 @@
                     else
                         case(instr_class) is
                             when DP =>
-                                I_bit <= instruction(25);
-                                Rn <= instruction(19 downto 16);
-                                Rd <= instruction(15 downto 12);
-                                register_index1 <= to_integer(unsigned(Rn));
-                                register_index2 <= to_integer(unsigned(Rd));
-
                                 case(i_decoded) is
                                     when add =>
                                         if I_bit='1' then
                                             --add immediate
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
-                                            Rm_val(31 downto 8) <= (others => '0');
-                                            Rd_val <= Rn_val + Rm_val;
-                                            registers(register_index2) <= Rd_val;
+                                            --Rn_val <= registers(register_index1);
+                                            --Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
+                                            --Rm_val(31 downto 8) <= (others => '0');
+                                            --Rd_val <= Rn_val + Rm_val;
+                                            registers(register_index2) <= registers(register_index1) + ("000000000000000000000000"&instruction(7 downto 0));
                                             wr_enable_to_dm <= '0';
-
 
                                         else
                                             --normal add
-                                            Rm <= instruction(3 downto 0);
-                                            register_index3 <= to_integer(unsigned(Rm));
-                                            Rm_val <= registers(register_index3);
-                                            Rn_val <= registers(register_index1);
-                                            Rd_val <= Rn_val + Rm_val;
-                                            registers(register_index2) <= Rd_val;
+                                            registers(register_index2) <= registers(register_index1) + registers(register_index3);
                                             wr_enable_to_dm <= '0';
                                             
                                         end if;
                                     when sub =>
                                         if I_bit='1' then
                                             --sub immediate
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
-                                            Rm_val(31 downto 8) <= (others => '0');
-                                            Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
-                                            Rd_val <= Rn_val + Rm_val;
-                                            registers(register_index2) <= Rd_val;
+                                            registers(register_index2) <= registers(register_index1) + (not ("000000000000000000000000"&instruction(7 downto 0))) + "00000000000000000000000000000001";
                                             wr_enable_to_dm <= '0';
 
                                         else
                                             --normal sub
-                                            Rm <= instruction(3 downto 0);
-                                            register_index3 <= to_integer(unsigned(Rm));
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val <= registers(register_index3);
-                                            Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
-                                            Rd_val <= Rn_val + Rm_val;
-                                            registers(register_index2) <= Rd_val;
+                                            registers(register_index2) <= registers(register_index1) + (not registers(register_index3)) + "00000000000000000000000000000001";
                                             wr_enable_to_dm <= '0';
 
                                         end if;
                                     when cmp =>
                                         if I_bit='1' then
                                             --cmp immediate     --cmp me ignoring Rd
-                                            Rn_val <= registers(register_index1); -- r2
-                                            Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
-                                            Rm_val(31 downto 8) <= (others => '0');
-                                            Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
-                                            Rd_val <= Rn_val + Rm_val;
+                                            Rd_val <= registers(register_index1) + (not ("000000000000000000000000"&instruction(7 downto 0))) + "00000000000000000000000000000001";
                                             wr_enable_to_dm <= '0';
-                                            if (Rd_val="00000000000000000000000000000000") then
+                                            temp1 := registers(register_index1) + (not ("000000000000000000000000"&instruction(7 downto 0))) + "00000000000000000000000000000001"; 
+                                            if (temp1="00000000000000000000000000000000") then
                                                 --equal
                                                 FLAGS(0)<='1';
                                             else
@@ -155,14 +140,10 @@
 
                                         else
                                             --normal cmp
-                                            Rm <= instruction(3 downto 0);
-                                            register_index3 <= to_integer(unsigned(Rm));
-                                            Rm_val <= registers(register_index3);
-                                            Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
-                                            Rn_val <= registers(register_index1); -- r2
-                                            Rd_val <= Rn_val + Rm_val;
+                                            Rd_val <= registers(register_index1) + (not registers(register_index3)) + "00000000000000000000000000000001";
                                             wr_enable_to_dm <= '0';
-                                            if (Rd_val="00000000000000000000000000000000") then
+                                            temp1 := registers(register_index1) + (not registers(register_index3)) + "00000000000000000000000000000001";
+                                            if (temp1="00000000000000000000000000000000") then
                                                 --equal
                                                 FLAGS(0)<='1';
                                             else
@@ -173,20 +154,12 @@
                                     when mov =>
                                         if I_bit='1' then    --mov me ignoring Rn
                                             --mov immediate
-                                            Rm_val(7 downto 0) <= instruction(7 downto 0);  -- copying only 8 bits to immediate, Rm_val is imm8 here
-                                            Rm_val(31 downto 8) <= (others => '0');
-                                            Rd_val <= Rm_val;
-                                            registers(register_index2) <= Rd_val;
+                                            registers(register_index2) <= ("000000000000000000000000"&instruction(7 downto 0));
                                             wr_enable_to_dm <= '0';
-
 
                                         else
                                             --normal mov
-                                            Rm <= instruction(3 downto 0);
-                                            register_index3 <= to_integer(unsigned(Rm));
-                                            Rm_val <= registers(register_index3);
-                                            Rd_val <= Rm_val;
-                                            registers(register_index2) <= Rd_val;
+                                            registers(register_index2) <= registers(register_index3);
                                             wr_enable_to_dm <= '0';
                                             
                                         end if;
@@ -195,53 +168,33 @@
                                 end case;
                             
                             when DT =>
-
-                                U_bit <= instruction(23);
-                                Rn <= instruction(19 downto 16);
-                                Rd <= instruction(15 downto 12);
-                                register_index1 <= to_integer(unsigned(Rn));
-                                register_index2 <= to_integer(unsigned(Rd));
-
                                 case(i_decoded) is
                                     when ldr =>
                                         if U_bit='1' then
                                             --ldr immediate offset +
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val(11 downto 0) <= instruction(11 downto 0);
-                                            Rm_val(31 downto 12) <= (others => '0');
-                                            addr_to_data_mem <= Rn_val + Rm_val;
-                                            --after memory gets address--
-                                            registers(register_index2) <= data_from_data_mem;
+                                            addr_to_data_mem <= registers(register_index1) + ("00000000000000000000"&instruction(11 downto 0));
                                             wr_enable_to_dm <= '0';
+                                            --after memory gets address--
+                                            --registers(register_index2) <= data_from_data_mem;
 
                                         else
                                             --ldr immediate offset -
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val(11 downto 0) <= instruction(11 downto 0);
-                                            Rm_val(31 downto 12) <= (others => '0');
-                                            Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
-                                            addr_to_data_mem <= Rn_val + Rm_val;
-                                            --after getting address--
-                                            registers(register_index2) <= data_from_data_mem;
+                                            addr_to_data_mem <= registers(register_index1) + ((not ("00000000000000000000"&instruction(11 downto 0))) + "00000000000000000000000000000001");
                                             wr_enable_to_dm <= '0';
+                                            --after getting address--
+                                            --registers(register_index2) <= data_from_data_mem;
+                                            
                                         end if;
                                     when str =>
                                         if U_bit='1' then
                                             --str immediate offset +
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val(11 downto 0) <= instruction(11 downto 0);
-                                            Rm_val(31 downto 12) <= (others => '0');
                                             wr_enable_to_dm <= '1';
-                                            addr_to_data_mem <= Rn_val + Rm_val;
+                                            addr_to_data_mem <= registers(register_index1) + ("00000000000000000000"&instruction(11 downto 0));
                                             data_to_data_mem <= registers(register_index2);
                                         else
                                             --str immediate offset -
-                                            Rn_val <= registers(register_index1);
-                                            Rm_val(11 downto 0) <= instruction(11 downto 0);
-                                            Rm_val(31 downto 12) <= (others => '0');
-                                            Rm_val <= (not Rm_val) + "00000000000000000000000000000001";  -- (-b) = (not b) + 1
                                             wr_enable_to_dm <= '1';
-                                            addr_to_data_mem <= Rn_val + Rm_val;
+                                            addr_to_data_mem <= registers(register_index1) + ((not ("00000000000000000000"&instruction(11 downto 0))) + "00000000000000000000000000000001");
                                             data_to_data_mem <= registers(register_index2);
                                         end if;
                                     when others =>
@@ -253,11 +206,10 @@
                                 case(i_decoded) is
                                     when beq =>
                                         if FLAGS(0)='1' then
-                                            offset(23 downto 0) <= instruction(23 downto 0);
-                                            if (offset(23)='1') then
-                                                offset(31 downto 24)<="11111111";
+                                            if (instruction(23)='1') then
+                                                offset := ("11111111"&instruction(23 downto 0));
                                             else
-                                                offset(31 downto 24)<="00000000";
+                                                offset := ("00000000"&instruction(23 downto 0));
                                             end if;
                                         else
                                             -- do nothing
@@ -265,21 +217,19 @@
                                         
                                     when bne =>
                                         if FLAGS(0)='0' then
-                                            offset(23 downto 0) <= instruction(23 downto 0);
-                                            if (offset(23)='1') then
-                                                offset(31 downto 24)<="11111111";
+                                            if (instruction(23)='1') then
+                                                offset := ("11111111"&instruction(23 downto 0));
                                             else
-                                                offset(31 downto 24)<="00000000";
+                                                offset := ("00000000"&instruction(23 downto 0));
                                             end if;
                                         else
                                             --do nothing
                                         end if;
                                     when b =>
-                                        offset(23 downto 0) <= instruction(23 downto 0);
-                                        if (offset(23)='1') then
-                                            offset(31 downto 24)<="11111111";
+                                        if (instruction(23)='1') then
+                                            offset := ("11111111"&instruction(23 downto 0));
                                         else
-                                            offset(31 downto 24)<="00000000";
+                                            offset := ("00000000"&instruction(23 downto 0));
                                         end if;
                                     when others =>
                                         --do nothing
@@ -287,11 +237,11 @@
                             when unknown =>
                                 --do nothing
                         end case;
-                        PC <= PC + offset;
-                        PC <= PC + "00000000000000000000000000000100";
+                        --PC_VAR := PC + offset + "00000000000000000000000000000100";
                     end if;              
                     -- Now using the filtered variables
-                addr_to_prog_mem <= PC;
+                addr_to_prog_mem <= PC ;
+                PC <= PC + offset + "00000000000000000000000000000100";
                 end if;
         
         
