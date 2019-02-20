@@ -8,6 +8,9 @@
                reset : in STD_LOGIC;
                instruction : in std_logic_vector(31 downto 0);
                data_from_data_mem: in std_logic_vector(31 downto 0);
+               step_button : in std_logic;
+               go_button : in std_logic;
+               address_to_pc: in std_logic_vector(11 downto 0);
                addr_to_prog_mem : out std_logic_vector(31 downto 0);
                addr_to_data_mem : out std_logic_vector(31 downto 0);
                data_to_data_mem : out std_logic_vector(31 downto 0);
@@ -17,7 +20,7 @@
 
     architecture Behavioral of CPU is
 
-    type instr_class_type is (DP, DT, branch, unknown);
+    type instr_class_type is (DP, DT, branch, unknown, HALT);
     type i_decoded_type is (add,sub,cmp,mov,ldr,str,beq,bne,b,unknown);
 
     signal instr_class : instr_class_type;
@@ -43,6 +46,7 @@
     signal register_index1 : integer := 0; --Rn
     signal register_index2 : integer := 0; --Rd
     signal register_index3 : integer := 0; --Rm
+    signal state : integer := 0; -- 0=initial state, 1=onestep, 2=cont, 3=done
 
     begin
         
@@ -58,11 +62,12 @@
         Rm <= instruction(3 downto 0);
         register_index1 <= to_integer(unsigned(Rn));
         register_index2 <= to_integer(unsigned(Rd));
-        register_index3 <= to_integer(unsigned(Rm));        
+        register_index3 <= to_integer(unsigned(Rm));    
 
         instr_class <=  DP when F_field="00" else
                         DT when F_field="01" else
                         branch when F_field="10" else
+                        HALT when instruction="00000000000000000000000000000000" else
                         unknown;
         i_decoded <=    add when instr_class=DP and opcode="0100" else
                         sub when instr_class=DP and opcode="0010" else
@@ -89,14 +94,48 @@
         data_to_data_mem <= registers(register_index2) when i_decoded=str else (others => 'X');
         wr_enable_to_dm <= '1' when i_decoded=str else '0';
 
+        process(clock,reset) -- state changing process
+            begin
+                if rising_edge(clock) then
+                    if (state=0 and (reset='1' or (step_button='0' and go_button='0'))) then
+                        state <= 0;
+                    elsif (state=0 and step_button='1') then
+                        state <= 1;
+                    elsif (state=0 and go_button='1') then
+                        state <= 2;
+                    elsif (state=2 and instr_class /= HALT) then
+                        state <= 2;
+                    elsif (state=2 and instr_class = HALT) then
+                        state <= 3;
+                    elsif (state=3 and (step_button='1' or go_button='1')) then
+                        state <= 3;
+                    elsif (state=3 and step_button='0' and go_button='0') then
+                        state <= 0;
+                    elsif (state=1) then
+                        state <= 3;
+                    end if;
+                end if;
+        end process;
+
+        
+
         process(clock, reset)
             variable offset : std_logic_vector(31 downto 0):="00000000000000000000000000000000";
             begin
                 if rising_edge(clock) then
-                    if (reset = '1') then
-                        PC <= (others => '0'); 
-                    else
+
+                    if(state=0) then
+                        if (reset='1') then
+                            PC <= "00000000000000000000"&address_to_pc; -- address_to_pc came from switches
+                        else
+                            -- initial state, do nothing
+                        end if;
+                    elsif (state=1 or state=2) then
+                        -- main process
                         case(instr_class) is
+                            when HALT =>
+                                -- do nothing ,only pc change
+                                PC <= PC + "00000000000000000000000000000100";
                             when DP =>
                                 case(i_decoded) is
                                     when add =>
