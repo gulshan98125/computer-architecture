@@ -4,10 +4,10 @@ use ieee.numeric_std.all;
 
 -- entity declaration for your testbench. 
 --Notice that the entity port list is empty here.
-entity top_entity is
-end top_entity;
+entity testbench is
+end testbench;
 
-architecture behavior of top_entity is
+architecture behavior of testbench is
 
 -- component declaration for the unit under test (uut)
 component CPU is
@@ -25,7 +25,7 @@ Port (     clock : in STD_LOGIC;
 end component;
 
 component data_memory is 
-Port (     a : in std_logic_vector(13 downto 0);
+Port (     a : in std_logic_vector(9 downto 0);
            d : in std_logic_vector(31 downto 0);
            clk : in std_logic;
            we: in std_logic;
@@ -33,7 +33,7 @@ Port (     a : in std_logic_vector(13 downto 0);
            );
 end component;
 
-component program_memory is 
+component instruction_memory is 
 Port (     a : in std_logic_vector(7 downto 0);
            spo : out std_logic_vector(31 downto 0)
            );
@@ -41,7 +41,7 @@ end component;
 
 --declaring signals.
 signal clock : std_logic := '0';
-signal reset;
+signal reset: std_logic := '0' ;
 signal instruction : std_logic_vector(31 downto 0);
 signal data_from_data_mem: std_logic_vector(31 downto 0);
 
@@ -49,15 +49,15 @@ signal addr_to_prog_mem : std_logic_vector(31 downto 0);
 signal addr_to_data_mem : std_logic_vector(31 downto 0);
 signal data_to_data_mem : std_logic_vector(31 downto 0);
 signal wr_enable_to_dm : STD_LOGIC;
-signal step : STD_LOGIC;
-signal go : STD_LOGIC;
-signal switch_val : std_logic_vector(15 downto 0);
-signal led_val : std_logic_vector(15 downto 0);
+signal step : STD_LOGIC := '0' ;
+signal go : STD_LOGIC := '0' ;
+signal switch_val : std_logic_vector(15 downto 0) := (others => '0');
+signal led_val : std_logic_vector(15 downto 0) := (others => '0');
 signal program_address : std_logic_vector(11 downto 0); -- address to program memory which switches will provide
 
 -- define the period of clock here.
 -- It's recommended to use CAPITAL letters to define constants.
-constant CLK_PERIOD : time := 20 ns;
+constant CLK_PERIOD : time := 5 ns;
 
 begin
     led_val<= data_from_data_mem(15 downto 0) when switch_val(15 downto 12)=  "0000" else 
@@ -76,13 +76,13 @@ begin
     program_address <= switch_val(11 downto 0);
 
     -- instantiate the unit under test (uut)
-   IM_MAP: program_memory port map (
-           a => addr_to_prog_mem(9 downto 2),
+   IM_MAP: instruction_memory port map (
+           a => addr_to_prog_mem(7 downto 0),
            spo => instruction
            );
            
    DM_MAP: data_memory port map (
-           a => addr_to_data_mem(13 downto 0),
+           a => addr_to_data_mem(9 downto 0),
            d => data_to_data_mem,
            clk => clock,
            we => wr_enable_to_dm,
@@ -115,6 +115,30 @@ begin
    -- Stimulus process, Apply inputs here.
   stim_proc: process
    begin
+      wait for CLK_PERIOD;
+      
+      step <= '1';
+      wait for CLK_PERIOD*5;
+      
+      step <= '0';
+      wait for CLK_PERIOD*2;
+      
+      step <= '1';
+      wait for CLK_PERIOD*5;
+      
+      step <= '0';
+      wait for CLK_PERIOD*2;
+      
+      step <= '1';
+      wait for CLK_PERIOD*5;
+      
+      step <= '0';
+      wait for CLK_PERIOD*2;
+
+      go <= '1';
+      wait for CLK_PERIOD*5;
+
+      go <= '0';
       wait;
   end process;
 

@@ -62,12 +62,13 @@
         Rm <= instruction(3 downto 0);
         register_index1 <= to_integer(unsigned(Rn));
         register_index2 <= to_integer(unsigned(Rd));
-        register_index3 <= to_integer(unsigned(Rm));    
+        register_index3 <= to_integer(unsigned(Rm));
+        
 
-        instr_class <=  DP when F_field="00" else
+        instr_class <=  HALT when instruction="00000000000000000000000000000000" else
+                        DP when F_field="00" else
                         DT when F_field="01" else
                         branch when F_field="10" else
-                        HALT when instruction="00000000000000000000000000000000" else
                         unknown;
         i_decoded <=    add when instr_class=DP and opcode="0100" else
                         sub when instr_class=DP and opcode="0010" else
@@ -81,7 +82,7 @@
                         unknown;
         Rd_val <=   (registers(register_index1) + ((not registers(register_index3)) + "00000000000000000000000000000001")) when i_decoded=cmp and I_bit='0' else
                     (registers(register_index1) + ((not ("000000000000000000000000"&instruction(7 downto 0))) + "00000000000000000000000000000001")) when i_decoded=cmp and I_bit='1' else
-                    (others => 'X')
+                    (others => '1')
                     ;
 
         addr_to_prog_mem <= "00"&PC(31 downto 2);  -- dividing pc by 4 because memory is word addressable
@@ -89,9 +90,9 @@
                             (registers(register_index1) + ((not ("00000000000000000000"&instruction(11 downto 0))) + "00000000000000000000000000000001")) when i_decoded=ldr and U_bit='0' else
                             (registers(register_index1) + ("00000000000000000000"&instruction(11 downto 0))) when i_decoded=str and U_bit='1' else
                             (registers(register_index1) + ((not ("00000000000000000000"&instruction(11 downto 0))) + "00000000000000000000000000000001")) when i_decoded=str and U_bit='0' else
-                            (others => 'X')
+                            (others => '0')
                              ;
-        data_to_data_mem <= registers(register_index2) when i_decoded=str else (others => 'X');
+        data_to_data_mem <= registers(register_index2) when i_decoded=str else (others => '0');
         wr_enable_to_dm <= '1' when i_decoded=str else '0';
 
         process(clock,reset) -- state changing process
@@ -134,8 +135,12 @@
                         -- main process
                         case(instr_class) is
                             when HALT =>
+                                if (state=1) then
                                 -- do nothing ,only pc change
                                 PC <= PC + "00000000000000000000000000000100";
+                                else
+                                    --do nothing
+                                end if;
                             when DP =>
                                 case(i_decoded) is
                                     when add =>

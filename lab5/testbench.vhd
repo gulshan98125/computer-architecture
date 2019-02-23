@@ -92,9 +92,9 @@ begin
    -- Stimulus process, Apply inputs here.
   stim_proc: process
    begin
-   		reset <= '1'
-   		wait for CLK_PERIOD*2
-   		reset <= '0'        
+   		reset <= '1';
+   		wait for CLK_PERIOD*2;
+   		reset <= '0';       
         wait;
   end process;
 
