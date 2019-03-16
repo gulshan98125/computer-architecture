@@ -8,8 +8,8 @@ entity instruction_decoder is
 Port(
 	instruction: in std_logic_vector(31 downto 0);
 	class: out std_logic_vector(1 downto 0);		   -- DP=00, DT=01, branch=10, others = 11
-	i_decoded : out std_logic_vector(3 downto 0);  -- add,sub,cmp,etc
-	
+	i_decoded : out std_logic_vector(3 downto 0)  -- add,sub,cmp,etc
+	);
 end instruction_decoder;
 
 architecture behavioural of instruction_decoder is
@@ -25,21 +25,44 @@ begin
     F_field <= instruction(27 downto 26);
     opcode <= instruction (24 downto 21);
     L_bit <= instruction(20);
-
+    class <= "11" when instruction="00000000000000000000000000000000" else F_field;
 	process(instruction)
 		begin
-			class <= "11" when instruction="00000000000000000000000000000000" else F_field;
 			case F_field is
 				when "00" =>		--means DP class
 					case opcode is
-						when "0100" =>
+						when "0000" =>
 							i_decoded <= "0000";	--ADD
-						when "0010" =>
+						when "0001" =>
 							i_decoded <= "0001";	--SUB
-						when "1101" =>
+						when "0010" =>
 							i_decoded <= "0010";	--MOV
-						when "1010" =>
+						when "0011" =>
 							i_decoded <= "0011";	--cmp
+						when "0100" =>
+							i_decoded <= "0100";	--AND
+						when "0101" =>
+							i_decoded <= "0101";	--EOR
+						when "0110" =>
+							i_decoded <= "0110";	--ORR
+						when "0111" =>
+							i_decoded <= "0111"; 	--BIC
+						when "1000" =>
+							i_decoded <= "1000";	--ADC
+						when "1001" =>
+							i_decoded <= "1001"; 	--SBC
+						when "1010" =>
+							i_decoded <= "1010";	--RSB
+						when "1011" =>
+							i_decoded <= "1011";	--RSC
+						when "1100" =>
+							i_decoded <= "1100";	--CMN
+						when "1101" =>
+							i_decoded <= "1101";	--TST
+						when "1110" =>
+							i_decoded <= "1110";	--TEQ
+						when "1111" =>
+							i_decoded <= "1111";	--MVN
 						when others =>
 							i_decoded <= (others => 'X');	--UNKNOWN
 					end case;
@@ -47,7 +70,8 @@ begin
 					if L_bit='0' then
 						i_decoded <= "0100";		--STR
 					else
-						i_decoded <= "0101";		--LDR
+						i_decoded <= "0101";
+					end if;		--LDR
 				when "10" =>
 					case cond is
 						when "1110" =>

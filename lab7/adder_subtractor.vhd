@@ -4,7 +4,7 @@ use IEEE.std_logic_arith.all;
 use IEEE.std_logic_unsigned.all;
 use IEEE.numeric_std.all;
 
-entity Adder is
+entity adder_subtractor is
 Port(
 	adder_input1: in std_logic_vector(31 downto 0);
 	adder_input2: in std_logic_vector(31 downto 0);
@@ -13,9 +13,9 @@ Port(
 	carry_in: in std_logic;
 	carry_out: out std_logic
 	);
-end Adder;
+end adder_subtractor;
 
-architecture behavioural of Adder is
+architecture behavioural of adder_subtractor is
 
 signal actual_operation: std_logic_vector(32 downto 0);
 

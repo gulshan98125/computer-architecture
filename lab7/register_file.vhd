@@ -1,10 +1,10 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_unsigned.ALL;
+use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 
-entity Register_File is
+entity register_File is
 Port(
 	read_address1: in std_logic_vector(3 downto 0);		-- 1st read port
 	data_output1: out std_logic_vector(31 downto 0);
@@ -20,21 +20,22 @@ Port(
 	data_output_pc: out std_logic_vector(31 downto 0);
 	write_enable_pc: in std_logic
 	);
-end Register_File;
+end register_File;
 
-architecture behavioural of Register_File is
+architecture behavioural of register_File is
 
 type register_list is array (0 to 14) of std_logic_vector(31 downto 0);
 signal registers : register_list:=(others=>x"00000000");
 signal PC: std_logic_vector(31 downto 0):= (others => '0');
 
 begin
+	
+	data_output_pc <= PC;
 
 	process(read_address1,read_address2,address_input_wp,data_input_wp,write_enable_wp,data_input_pc,write_enable_pc)
 		begin
 			data_output1 <= registers(to_integer(unsigned(read_address1)));
 			data_output2 <= registers(to_integer(unsigned(read_address2)));
-			data_output_pc <= PC;
 
 			if write_enable_wp='1' then 
 				registers(to_integer(unsigned(address_input_wp))) <= data_input_wp;
