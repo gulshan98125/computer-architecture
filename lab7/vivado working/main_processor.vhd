@@ -8,7 +8,22 @@ entity main_processor is
            reset : in STD_LOGIC;
            step  : in STD_LOGIC;
            instr  : in STD_LOGIC;
-           go  : in STD_LOGIC
+           go  : in STD_LOGIC;
+           IR_out : out std_logic_vector(31 downto 0);
+           PC_out : out std_logic_vector(31 downto 0);
+           ES_out : out integer;
+           CS_out : out integer;
+           instr_class_out: out std_logic_vector(1 downto 0);
+           i_decoded_out: out std_logic_vector(3 downto 0);
+           R0 : out std_logic_vector(31 downto 0);
+           R1 : out std_logic_vector(31 downto 0);
+           R2 : out std_logic_vector(31 downto 0);
+           R3 : out std_logic_vector(31 downto 0);
+           DR_out : out std_logic_vector(31 downto 0);
+           A_out : out std_logic_vector(31 downto 0);
+           B_out : out std_logic_vector(31 downto 0);
+           RES_out : out std_logic_vector(31 downto 0);
+           flags_out : out std_logic_vector(3 downto 0)
            );
 end main_processor;
 
@@ -27,7 +42,12 @@ Port(
 
     data_input_pc: in std_logic_vector(31 downto 0);        -- PC port
     data_output_pc: out std_logic_vector(31 downto 0);
-    write_enable_pc: in std_logic
+    write_enable_pc: in std_logic;
+    
+    r0: out std_logic_vector(31 downto 0);
+    r1: out std_logic_vector(31 downto 0);
+    r2: out std_logic_vector(31 downto 0);
+    r3: out std_logic_vector(31 downto 0)
     );
 end component;
 
@@ -82,8 +102,6 @@ end component;
 
 --signals below
 
-
-
 -----------storing registers--------------
 signal IR : std_logic_vector(31 downto 0);
 signal DR : std_logic_vector(31 downto 0);
@@ -134,6 +152,23 @@ signal L_bit: std_logic;
 signal I_bit: std_logic;
 
 begin
+
+--output signals management---
+
+IR_out <= IR;
+PC_out <= PC;
+ES_out <= execution_state;
+CS_out <= control_state;
+instr_class_out <= instr_class;
+i_decoded_out <= i_decoded;
+DR_out <= DR;
+A_out <= A;
+B_out <= B;
+RES_out <= RES;
+flags_out <= ALU_flags_out;
+------------------------------
+
+
 
 --red state management--
 red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or control_state=7 or control_state=9) else
@@ -240,7 +275,12 @@ RF_MAP: register_file port map(
 
         data_input_pc => RF_data_in_pc,
         data_output_pc => RF_data_out_pc,
-        write_enable_pc => RF_write_enable_pc
+        write_enable_pc => RF_write_enable_pc,
+        
+        r0 => R0,
+        r1 => R1,
+        r2 => R2,
+        r3 => R3
         );
 
 ALU_MAP: ALU_and_flags port map(
@@ -351,7 +391,7 @@ ALU_MAP: ALU_and_flags port map(
 
 
     -- main process---
-    process(clock)
+     process(clock)
         begin
             if rising_edge(clock) then
                 if (reset='1') then
@@ -383,7 +423,6 @@ ALU_MAP: ALU_and_flags port map(
                                 elsif (instr_class="10" and i_decoded="0110") then  --b
                                     PC <= ALU_out(29 downto 0)&"00";
                                 end if;
-                                
                             when 5 =>
                                 -- HALT state, do nothing
                             when 6 =>
