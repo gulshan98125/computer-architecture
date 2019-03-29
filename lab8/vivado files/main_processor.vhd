@@ -46,9 +46,9 @@ Port(
     data_output_pc: out std_logic_vector(31 downto 0);
     write_enable_pc: in std_logic;
     r0 : out std_logic_vector(31 downto 0);
-	r1 : out std_logic_vector(31 downto 0);
-	r2 : out std_logic_vector(31 downto 0);
-	r3 : out std_logic_vector(31 downto 0)
+    r1 : out std_logic_vector(31 downto 0);
+    r2 : out std_logic_vector(31 downto 0);
+    r3 : out std_logic_vector(31 downto 0)
     );
 end component;
 

@@ -8,24 +8,7 @@ entity main_processor is
            reset : in STD_LOGIC;
            step  : in STD_LOGIC;
            instr  : in STD_LOGIC;
-           go  : in STD_LOGIC;
-           IR_out : out std_logic_vector(31 downto 0);
-           PC_out : out std_logic_vector(31 downto 0);
-           ES_out : out integer;
-           CS_out : out integer;
-           instr_class_out: out std_logic_vector(1 downto 0);
-           i_decoded_out: out std_logic_vector(4 downto 0);
-           R0 : out std_logic_vector(31 downto 0);
-           R1 : out std_logic_vector(31 downto 0);
-           R2 : out std_logic_vector(31 downto 0);
-           R3 : out std_logic_vector(31 downto 0);
-           DR_out : out std_logic_vector(31 downto 0);
-           A_out : out std_logic_vector(31 downto 0);
-           B_out : out std_logic_vector(31 downto 0);
-           RES_out : out std_logic_vector(31 downto 0);
-           flags_out : out std_logic_vector(3 downto 0);
-           RF_write_enable: out std_logic;
-           X_out : out std_logic_vector(4 downto 0)
+           go  : in STD_LOGIC
            );
 end main_processor;
 
@@ -44,11 +27,7 @@ Port(
 
     data_input_pc: in std_logic_vector(31 downto 0);        -- PC port
     data_output_pc: out std_logic_vector(31 downto 0);
-    write_enable_pc: in std_logic;
-    r0 : out std_logic_vector(31 downto 0);
-	r1 : out std_logic_vector(31 downto 0);
-	r2 : out std_logic_vector(31 downto 0);
-	r3 : out std_logic_vector(31 downto 0)
+    write_enable_pc: in std_logic
     );
 end component;
 
@@ -175,29 +154,7 @@ signal L_bit: std_logic;
 signal I_bit: std_logic;
 signal U_bit: std_logic;
 signal S_bit : std_logic;
-
-
-
 begin
-
---signals to simulate managing--
-flags_out <= ALU_flags_out;
-IR_out <= IR;
-PC_out <= PC;
-ES_out <= execution_state;
-CS_out <= control_state;
-instr_class_out <= instr_class;
-i_decoded_out <= i_decoded;
-DR_out <= DR;
-A_out <= A;
-B_out <= B;
-RES_out <= RES;
-
-RF_write_enable <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
-                      '1' when control_state=9 else
-                      '0';
-X_out <= X;
---------------------------------
 
 --red state management--
 red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or control_state=7 or control_state=9) else
@@ -324,11 +281,7 @@ RF_MAP: register_file port map(
 
         data_input_pc => RF_data_in_pc,
         data_output_pc => RF_data_out_pc,
-        write_enable_pc => RF_write_enable_pc,
-        r0 => R0,
-        r1 => R1,
-        r2 => R2,
-        r3 => R3
+        write_enable_pc => RF_write_enable_pc
         );
 
 ALU_MAP: ALU_and_flags port map(
@@ -336,7 +289,7 @@ ALU_MAP: ALU_and_flags port map(
             operand2=> ALU_in2,
             result => ALU_out,
             carry => ALU_carry_in,
-            carry_from_shifter => shifter_carry_out,
+            carry_from_shifer => shifter_carry_out,
             control_operation => ALU_operation,
             write_enable_flag => ALU_write_enable_flag,
             flags_out=>ALU_flags_out
@@ -482,7 +435,9 @@ SHIFTER_MAP: shifter port map(
                                     --something something   
                                 end if;
                             when 11 =>
+                                if (I_bit='1') then
                                     B <= shifter_output;
+                                end if;
 
                             when 2 =>
                                 RES <= ALU_out;

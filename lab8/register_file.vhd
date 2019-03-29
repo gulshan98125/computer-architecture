@@ -18,11 +18,7 @@ Port(
 
 	data_input_pc: in std_logic_vector(31 downto 0);		-- PC port
 	data_output_pc: out std_logic_vector(31 downto 0);
-	write_enable_pc: in std_logic;
-	r0 : out std_logic_vector(31 downto 0);
-	r1 : out std_logic_vector(31 downto 0);
-	r2 : out std_logic_vector(31 downto 0);
-	r3 : out std_logic_vector(31 downto 0)
+	write_enable_pc: in std_logic
 	);
 end register_File;
 
@@ -35,10 +31,6 @@ signal PC: std_logic_vector(31 downto 0):= (others => '0');
 begin
 	
 	data_output_pc <= PC;
-	r0 <= registers(0);
-	r1 <= registers(1);
-	r2 <= registers(2);
-	r3 <= registers(3);
 
 	process(read_address1,read_address2,address_input_wp,data_input_wp,write_enable_wp,data_input_pc,write_enable_pc)
 		begin
