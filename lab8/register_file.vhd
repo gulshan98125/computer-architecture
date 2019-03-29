@@ -18,7 +18,8 @@ Port(
 
 	data_input_pc: in std_logic_vector(31 downto 0);		-- PC port
 	data_output_pc: out std_logic_vector(31 downto 0);
-	write_enable_pc: in std_logic
+	write_enable_pc: in std_logic;
+	clock: in std_logic
 	);
 end register_File;
 
@@ -31,12 +32,12 @@ signal PC: std_logic_vector(31 downto 0):= (others => '0');
 begin
 	
 	data_output_pc <= PC;
+	data_output1 <= registers(to_integer(unsigned(read_address1)));
+	data_output2 <= registers(to_integer(unsigned(read_address2)));
 
-	process(read_address1,read_address2,address_input_wp,data_input_wp,write_enable_wp,data_input_pc,write_enable_pc)
+	process(clock)
 		begin
-			data_output1 <= registers(to_integer(unsigned(read_address1)));
-			data_output2 <= registers(to_integer(unsigned(read_address2)));
-
+        if rising_edge(clock) then
 			if write_enable_wp='1' then 
 				registers(to_integer(unsigned(address_input_wp))) <= data_input_wp;
 			else
@@ -48,7 +49,7 @@ begin
 			else
 				--do nothing
 			end if;
-
+        end if;
 	end process;
 
 	

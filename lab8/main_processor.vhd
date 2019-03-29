@@ -27,7 +27,8 @@ Port(
 
     data_input_pc: in std_logic_vector(31 downto 0);        -- PC port
     data_output_pc: out std_logic_vector(31 downto 0);
-    write_enable_pc: in std_logic
+    write_enable_pc: in std_logic;
+    clock: in std_logic
     );
 end component;
 
@@ -281,7 +282,8 @@ RF_MAP: register_file port map(
 
         data_input_pc => RF_data_in_pc,
         data_output_pc => RF_data_out_pc,
-        write_enable_pc => RF_write_enable_pc
+        write_enable_pc => RF_write_enable_pc,
+        clock => clock
         );
 
 ALU_MAP: ALU_and_flags port map(

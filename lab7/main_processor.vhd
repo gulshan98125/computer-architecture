@@ -46,9 +46,10 @@ Port(
     data_output_pc: out std_logic_vector(31 downto 0);
     write_enable_pc: in std_logic;
     r0 : out std_logic_vector(31 downto 0);
-	r1 : out std_logic_vector(31 downto 0);
-	r2 : out std_logic_vector(31 downto 0);
-	r3 : out std_logic_vector(31 downto 0)
+    r1 : out std_logic_vector(31 downto 0);
+    r2 : out std_logic_vector(31 downto 0);
+    r3 : out std_logic_vector(31 downto 0);
+    clock: in std_logic
     );
 end component;
 
@@ -176,6 +177,10 @@ signal I_bit: std_logic;
 signal U_bit: std_logic;
 signal S_bit : std_logic;
 
+signal R0_signal: std_logic_vector(31 downto 0);
+signal R1_signal: std_logic_vector(31 downto 0);
+signal R2_signal: std_logic_vector(31 downto 0);
+signal R3_signal: std_logic_vector(31 downto 0);
 
 
 begin
@@ -192,6 +197,10 @@ DR_out <= DR;
 A_out <= A;
 B_out <= B;
 RES_out <= RES;
+R0 <= R0_signal;
+R1 <= R1_signal;
+R2 <= R2_signal;
+R3 <= R3_signal;
 
 RF_write_enable <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
                       '1' when control_state=9 else
@@ -325,10 +334,11 @@ RF_MAP: register_file port map(
         data_input_pc => RF_data_in_pc,
         data_output_pc => RF_data_out_pc,
         write_enable_pc => RF_write_enable_pc,
-        r0 => R0,
-        r1 => R1,
-        r2 => R2,
-        r3 => R3
+        r0 => R0_signal,
+        r1 => R1_signal,
+        r2 => R2_signal,
+        r3 => R3_signal,
+        clock => clock
         );
 
 ALU_MAP: ALU_and_flags port map(

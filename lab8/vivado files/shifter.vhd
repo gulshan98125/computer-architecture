@@ -37,11 +37,11 @@ begin
 						(others => '0') when others;
 
 	with shift_type select 
-	signed_output <= 	SHIFT_RIGHT(signed(signed_input&"0"), shift_val) when "10",
+	signed_output <= 	SHIFT_RIGHT(signed(signed_input&"0"), shift_val) when "10", --ASR
 						(others => '0') when others;
 
 	with shift_type select 
-	rotate_output <= 	ROTATE_RIGHT(unsigned(unsigned_input), shift_val) when "11",
+	rotate_output <= 	ROTATE_RIGHT(unsigned(unsigned_input), shift_val) when "11", --ROR
 						(others => '0') when others; 
 
 	with shift_type	select 
