@@ -23,18 +23,6 @@ Port(
 	r1 : out std_logic_vector(31 downto 0);
 	r2 : out std_logic_vector(31 downto 0);
 	r3 : out std_logic_vector(31 downto 0);
-	r4 : out std_logic_vector(31 downto 0);
-	r5 : out std_logic_vector(31 downto 0);
-	r6 : out std_logic_vector(31 downto 0);
-	r7 : out std_logic_vector(31 downto 0);
-	r8 : out std_logic_vector(31 downto 0);
-	r9 : out std_logic_vector(31 downto 0);
-	r10 : out std_logic_vector(31 downto 0);
-	r11 : out std_logic_vector(31 downto 0);
-	r12 : out std_logic_vector(31 downto 0);
-	r13 : out std_logic_vector(31 downto 0);
-	r14 : out std_logic_vector(31 downto 0);
-	r15 : out std_logic_vector(31 downto 0);
 	clock: in std_logic
 	);
 end register_File;
@@ -53,18 +41,6 @@ begin
 	r1 <= registers(1);
 	r2 <= registers(2);
 	r3 <= registers(3);
-	r4 <= registers(4);
-	r5 <= registers(5);
-	r6 <= registers(6);
-	r7 <= registers(7);
-	r8 <= registers(8);
-	r9 <= registers(9);
-	r10 <= registers(10);
-	r11 <= registers(11);
-	r12 <= registers(12);
-	r13 <= registers(13);
-	r14 <= registers(14);
-	r15 <= registers(15);
 
 	process(clock)
 		begin

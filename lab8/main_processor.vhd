@@ -430,7 +430,7 @@ SHIFTER_MAP: shifter port map(
                             when 10 =>
                                 if (I_bit='0' and IR(4)='1') then
                                     X <= RF_output2(4 downto 0);
-                                elsif (I_bit='0' and IR(4)='1') then
+                                elsif (I_bit='0' and IR(4)='0') then
                                     X <= IR(11 downto 7);
                                 elsif (I_bit='1') then
                                     X <= IR(11 downto 8)&"0";

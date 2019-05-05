@@ -30,30 +30,16 @@ Port (     clock : in STD_LOGIC;
            ES_out : out integer;
            CS_out : out integer;
            instr_class_out: out std_logic_vector(1 downto 0);
-           i_decoded_out: out std_logic_vector(4 downto 0);
+           i_decoded_out: out std_logic_vector(3 downto 0);
            R0 : out std_logic_vector(31 downto 0);
            R1 : out std_logic_vector(31 downto 0);
            R2 : out std_logic_vector(31 downto 0);
            R3 : out std_logic_vector(31 downto 0);
-           R4 : out std_logic_vector(31 downto 0);
-           R5 : out std_logic_vector(31 downto 0);
-           R6 : out std_logic_vector(31 downto 0);
-           R7 : out std_logic_vector(31 downto 0);
-           R8 : out std_logic_vector(31 downto 0);
-           R9 : out std_logic_vector(31 downto 0);
-           R10 : out std_logic_vector(31 downto 0);
-           R11 : out std_logic_vector(31 downto 0);
-           R12 : out std_logic_vector(31 downto 0);
-           R13 : out std_logic_vector(31 downto 0);
-           R14 : out std_logic_vector(31 downto 0);
-           R15 : out std_logic_vector(31 downto 0);
            DR_out : out std_logic_vector(31 downto 0);
            A_out : out std_logic_vector(31 downto 0);
            B_out : out std_logic_vector(31 downto 0);
            RES_out : out std_logic_vector(31 downto 0);
-           flags_out : out std_logic_vector(3 downto 0);
-           RF_write_enable: out std_logic;
-           X_out: out std_logic_vector(4 downto 0)
+           flags_out : out std_logic_vector(3 downto 0)
            );
 end component;
 
@@ -74,27 +60,13 @@ signal PC: std_logic_vector(31 downto 0);
 signal ES: integer;
 signal CS: integer;
 signal instr_class:  std_logic_vector(1 downto 0);
-signal i_decoded:  std_logic_vector(4 downto 0);
+signal i_decoded:  std_logic_vector(3 downto 0);
 signal flags: std_logic_vector(3 downto 0);
-signal RF_write_enable: std_logic;
 
 signal R0 : std_logic_vector(31 downto 0);
 signal R1 : std_logic_vector(31 downto 0);
 signal R2 : std_logic_vector(31 downto 0);
 signal R3 : std_logic_vector(31 downto 0);
-signal R4 : std_logic_vector(31 downto 0);
-signal R5 : std_logic_vector(31 downto 0);
-signal R6 : std_logic_vector(31 downto 0);
-signal R7 : std_logic_vector(31 downto 0);
-signal R8 : std_logic_vector(31 downto 0);
-signal R9 : std_logic_vector(31 downto 0);
-signal R10 : std_logic_vector(31 downto 0);
-signal R11 : std_logic_vector(31 downto 0);
-signal R12 : std_logic_vector(31 downto 0);
-signal R13 : std_logic_vector(31 downto 0);
-signal R14 : std_logic_vector(31 downto 0);
-signal R15 : std_logic_vector(31 downto 0);
-signal X: std_logic_vector(4 downto 0);
 
 -- define the period of clock here.
 -- It's recommended to use CAPITAL letters to define constants.
@@ -125,25 +97,11 @@ begin
             R1 => R1,
             R2 => R2,
             R3 => R3,
-            R4 => R4,
-            R5 => R5,
-            R6 => R6,
-            R7 => R7,
-            R8 => R8,
-            R9 => R9,
-            R10 => R10,
-            R11 => R11,
-            R12 => R12,
-            R13 => R13,
-            R14 => R14,
-            R15 => R15,
             DR_out => DR,
             A_out => A,
             B_out => B,
             RES_out => RES,
-            flags_out => flags,
-            RF_write_enable => RF_write_enable,
-            X_out => X
+            flags_out => flags
         );
 
     --Clock process definitions( clock with 50% duty cycle is generated here.
@@ -169,13 +127,13 @@ begin
       go_signal <= '1';
       wait for CLK_PERIOD*5;
       go_signal <= '0';
-      wait for CLK_PERIOD*300;
-      
+      wait for CLK_PERIOD*210;
       
       go_signal <= '1';
       wait for CLK_PERIOD*5;
       go_signal <= '0';
-      wait for CLK_PERIOD*10;
+      wait for CLK_PERIOD;
+      
       wait;
    end process;
 

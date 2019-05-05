@@ -33,18 +33,6 @@
                R1 : out std_logic_vector(31 downto 0);
                R2 : out std_logic_vector(31 downto 0);
                R3 : out std_logic_vector(31 downto 0);
-               R4 : out std_logic_vector(31 downto 0);
-               R5 : out std_logic_vector(31 downto 0);
-               R6 : out std_logic_vector(31 downto 0);
-               R7 : out std_logic_vector(31 downto 0);
-               R8 : out std_logic_vector(31 downto 0);
-               R9 : out std_logic_vector(31 downto 0);
-               R10 : out std_logic_vector(31 downto 0);
-               R11 : out std_logic_vector(31 downto 0);
-               R12 : out std_logic_vector(31 downto 0);
-               R13 : out std_logic_vector(31 downto 0);
-               R14 : out std_logic_vector(31 downto 0);
-               R15 : out std_logic_vector(31 downto 0);
                DR_out : out std_logic_vector(31 downto 0);
                A_out : out std_logic_vector(31 downto 0);
                B_out : out std_logic_vector(31 downto 0);
@@ -79,18 +67,6 @@
     signal R1 : std_logic_vector(31 downto 0);
     signal R2 : std_logic_vector(31 downto 0);
     signal R3 : std_logic_vector(31 downto 0);
-    signal R4 : std_logic_vector(31 downto 0);
-    signal R5 : std_logic_vector(31 downto 0);
-    signal R6 : std_logic_vector(31 downto 0);
-    signal R7 : std_logic_vector(31 downto 0);
-    signal R8 : std_logic_vector(31 downto 0);
-    signal R9 : std_logic_vector(31 downto 0);
-    signal R10 : std_logic_vector(31 downto 0);
-    signal R11 : std_logic_vector(31 downto 0);
-    signal R12 : std_logic_vector(31 downto 0);
-    signal R13 : std_logic_vector(31 downto 0);
-    signal R14 : std_logic_vector(31 downto 0);
-    signal R15 : std_logic_vector(31 downto 0);
     signal X: std_logic_vector(4 downto 0);
     signal fake_clock: std_logic := '0';
     signal counter : integer := 0;
@@ -108,38 +84,26 @@
            R1(15 downto 0) when switch="0000000000000001" else  --r1
            R2(15 downto 0) when switch="0000000000000010" else  --r2
            R3(15 downto 0) when switch="0000000000000011" else  --r3
-           R4(15 downto 0) when switch="0000000000000100" else  --r4
-           R5(15 downto 0) when switch="0000000000000101" else  --r5
-           R6(15 downto 0) when switch="0000000000000110" else  --r6
-           R7(15 downto 0) when switch="0000000000000111" else  --r7
-           R8(15 downto 0) when switch="0000000000001000" else  --r8
-           R9(15 downto 0) when switch="0000000000001001" else  --r9
-           R10(15 downto 0) when switch="0000000000001010" else  --r10
-           R11(15 downto 0) when switch="0000000000001011" else  --r11
-           R12(15 downto 0) when switch="0000000000001100" else  --r12
-           R13(15 downto 0) when switch="0000000000001101" else  --r13
-           R14(15 downto 0) when switch="0000000000001110" else  --r14
-           R15(15 downto 0) when switch="0000000000001111" else  --r15
     
-           IR(15 downto 0) when  switch="0000000000010000" else  --IR
-           IR(31 downto 16) when switch="1000000000010000" else  --IR
+           IR(15 downto 0) when  switch="0000000000000100" else  --IR
+           IR(31 downto 16) when switch="1000000000000100" else  --IR
     
-           A(15 downto 0) when  switch="0000000000010100" else  --A
-           A(31 downto 16) when switch="1000000000010100" else  --A
+           A(15 downto 0) when  switch="0000000000000101" else  --A
+           A(31 downto 16) when switch="1000000000000101" else  --A
     
-           B(15 downto 0) when  switch="0000000000011000" else  --B
-           B(31 downto 16) when switch="1000000000011000" else  --B
+           B(15 downto 0) when  switch="0000000000000110" else  --B
+           B(31 downto 16) when switch="1000000000000110" else  --B
     
-           RES(15 downto 0) when  switch="0000000000100000" else  --RES
-           RES(31 downto 16) when switch="1000000000100000" else  --RES
+           RES(15 downto 0) when  switch="0000000000001000" else  --RES
+           RES(31 downto 16) when switch="1000000000001000" else  --RES
     
            PC(15 downto 0) when  switch="0000000000001001" else  --PC
            PC(31 downto 16) when switch="1000000000001001" else  --PC
     
-           std_logic_vector(to_unsigned(ES, led'length)) when  switch="0000000000110000" else  --ES
-           std_logic_vector(to_unsigned(CS, led'length)) when  switch="0000000000110100" else  --CS
+           std_logic_vector(to_unsigned(ES, led'length)) when  switch="0000000000001100" else  --ES
+           std_logic_vector(to_unsigned(CS, led'length)) when  switch="0000000000001101" else  --CS
     
-           "000000000000"&flags when switch="0000000000111000" else --flags
+           "000000000000"&flags when switch="0000000000001110" else --flags
            "0000000000000000";
     
     
@@ -160,18 +124,6 @@
              R1 => R1,
              R2 => R2,
              R3 => R3,
-             R4 => R4,
-             R5 => R5,
-             R6 => R6,
-             R7 => R7,
-             R8 => R8,
-             R9 => R9,
-             R10 => R10,
-             R11 => R11,
-             R12 => R12,
-             R13 => R13,
-             R14 => R14,
-             R15 => R15,
              DR_out => DR,
              A_out => A,
              B_out => B,

@@ -19,23 +19,11 @@ Port(
 	data_input_pc: in std_logic_vector(31 downto 0);		-- PC port
 	data_output_pc: out std_logic_vector(31 downto 0);
 	write_enable_pc: in std_logic;
-	r0 : out std_logic_vector(31 downto 0);
-	r1 : out std_logic_vector(31 downto 0);
-	r2 : out std_logic_vector(31 downto 0);
-	r3 : out std_logic_vector(31 downto 0);
-	r4 : out std_logic_vector(31 downto 0);
-	r5 : out std_logic_vector(31 downto 0);
-	r6 : out std_logic_vector(31 downto 0);
-	r7 : out std_logic_vector(31 downto 0);
-	r8 : out std_logic_vector(31 downto 0);
-	r9 : out std_logic_vector(31 downto 0);
-	r10 : out std_logic_vector(31 downto 0);
-	r11 : out std_logic_vector(31 downto 0);
-	r12 : out std_logic_vector(31 downto 0);
-	r13 : out std_logic_vector(31 downto 0);
-	r14 : out std_logic_vector(31 downto 0);
-	r15 : out std_logic_vector(31 downto 0);
-	clock: in std_logic
+	
+	r0: out std_logic_vector(31 downto 0);
+	r1: out std_logic_vector(31 downto 0);
+	r2: out std_logic_vector(31 downto 0);
+	r3: out std_logic_vector(31 downto 0)
 	);
 end register_File;
 
@@ -46,29 +34,18 @@ signal registers : register_list:=(others=>x"00000000");
 signal PC: std_logic_vector(31 downto 0):= (others => '0');
 
 begin
-	data_output1 <= registers(to_integer(unsigned(read_address1)));
-	data_output2 <= registers(to_integer(unsigned(read_address2)));
+	
 	data_output_pc <= PC;
 	r0 <= registers(0);
 	r1 <= registers(1);
 	r2 <= registers(2);
 	r3 <= registers(3);
-	r4 <= registers(4);
-	r5 <= registers(5);
-	r6 <= registers(6);
-	r7 <= registers(7);
-	r8 <= registers(8);
-	r9 <= registers(9);
-	r10 <= registers(10);
-	r11 <= registers(11);
-	r12 <= registers(12);
-	r13 <= registers(13);
-	r14 <= registers(14);
-	r15 <= registers(15);
 
-	process(clock)
+	process(read_address1,read_address2,address_input_wp,data_input_wp,write_enable_wp,data_input_pc,write_enable_pc)
 		begin
-        if rising_edge(clock) then
+			data_output1 <= registers(to_integer(unsigned(read_address1)));
+			data_output2 <= registers(to_integer(unsigned(read_address2)));
+
 			if write_enable_wp='1' then 
 				registers(to_integer(unsigned(address_input_wp))) <= data_input_wp;
 			else
@@ -80,7 +57,7 @@ begin
 			else
 				--do nothing
 			end if;
-        end if;
+
 	end process;
 
 	

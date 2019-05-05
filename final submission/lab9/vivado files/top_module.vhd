@@ -50,9 +50,15 @@ Port (     clock : in STD_LOGIC;
            DR_out : out std_logic_vector(31 downto 0);
            A_out : out std_logic_vector(31 downto 0);
            B_out : out std_logic_vector(31 downto 0);
+           D_out : out std_logic_vector(31 downto 0);
            RES_out : out std_logic_vector(31 downto 0);
            flags_out : out std_logic_vector(3 downto 0);
            RF_write_enable: out std_logic;
+           dm_wr_enable1: out std_logic;
+           dm_wr_enable2: out std_logic;
+           dm_wr_enable3: out std_logic;
+           dm_wr_enable4: out std_logic;
+           data_to_dm : out std_logic_vector(31 downto 0);
            X_out: out std_logic_vector(4 downto 0)
            );
 end component;
@@ -69,6 +75,7 @@ signal IR: std_logic_vector(31 downto 0);
 signal DR: std_logic_vector(31 downto 0);
 signal A: std_logic_vector(31 downto 0);
 signal B: std_logic_vector(31 downto 0);
+signal D: std_logic_vector(31 downto 0);
 signal RES: std_logic_vector(31 downto 0);
 signal PC: std_logic_vector(31 downto 0);
 signal ES: integer;
@@ -77,6 +84,11 @@ signal instr_class:  std_logic_vector(1 downto 0);
 signal i_decoded:  std_logic_vector(4 downto 0);
 signal flags: std_logic_vector(3 downto 0);
 signal RF_write_enable: std_logic;
+signal dm_wr_enable1 : std_logic;
+signal dm_wr_enable2 : std_logic;
+signal dm_wr_enable3 : std_logic;
+signal dm_wr_enable4 : std_logic;
+signal data_to_dm : std_logic_vector(31 downto 0);
 
 signal R0 : std_logic_vector(31 downto 0);
 signal R1 : std_logic_vector(31 downto 0);
@@ -140,9 +152,15 @@ begin
             DR_out => DR,
             A_out => A,
             B_out => B,
+            D_out => D,
             RES_out => RES,
             flags_out => flags,
             RF_write_enable => RF_write_enable,
+            dm_wr_enable1 => dm_wr_enable1,
+            dm_wr_enable2 => dm_wr_enable2,
+            dm_wr_enable3 => dm_wr_enable3,
+            dm_wr_enable4 => dm_wr_enable4,
+            data_to_dm => data_to_dm,
             X_out => X
         );
 

@@ -34,9 +34,15 @@ entity main_processor is
            DR_out : out std_logic_vector(31 downto 0);
            A_out : out std_logic_vector(31 downto 0);
            B_out : out std_logic_vector(31 downto 0);
+           D_out : out std_logic_vector(31 downto 0);
            RES_out : out std_logic_vector(31 downto 0);
            flags_out : out std_logic_vector(3 downto 0);
            RF_write_enable: out std_logic;
+           dm_wr_enable1: out std_logic;
+           dm_wr_enable2: out std_logic;
+           dm_wr_enable3: out std_logic;
+           dm_wr_enable4: out std_logic;
+           data_to_dm : out std_logic_vector(31 downto 0);
            X_out : out std_logic_vector(4 downto 0)
            );
 end main_processor;
@@ -122,14 +128,41 @@ end component;
 --    );
 --end component;
 
-component data_memory is 
+------- 4 memories with 8 bit wide data each and single input, gives 8 bit output-----
+--dm1 leftmost 8 bits, dm2 2nd leftmost 8 bits, dm3 2nd rightmost 8 bits, dm4 rightmost 8 bits
+component data_memory1 is 
 Port (     a : in std_logic_vector(9 downto 0);
-           d : in std_logic_vector(31 downto 0);
+           d : in std_logic_vector(7 downto 0);
            clk : in std_logic;
            we: in std_logic;
-           spo : out std_logic_vector(31 downto 0)
+           spo : out std_logic_vector(7 downto 0)
            );
 end component;
+component data_memory2 is 
+Port (     a : in std_logic_vector(9 downto 0);
+           d : in std_logic_vector(7 downto 0);
+           clk : in std_logic;
+           we: in std_logic;
+           spo : out std_logic_vector(7 downto 0)
+           );
+end component;
+component data_memory3 is 
+Port (     a : in std_logic_vector(9 downto 0);
+           d : in std_logic_vector(7 downto 0);
+           clk : in std_logic;
+           we: in std_logic;
+           spo : out std_logic_vector(7 downto 0)
+           );
+end component;
+component data_memory4 is 
+Port (     a : in std_logic_vector(9 downto 0);
+           d : in std_logic_vector(7 downto 0);
+           clk : in std_logic;
+           we: in std_logic;
+           spo : out std_logic_vector(7 downto 0)
+           );
+end component;
+---------------------------------------------------------
 
 component instruction_memory is 
 Port (     a : in std_logic_vector(7 downto 0);
@@ -149,6 +182,7 @@ signal B : std_logic_vector(31 downto 0);
 signal X : std_logic_vector(4 downto 0); -- shift amount 5 bits
 signal RES : std_logic_vector(31 downto 0);
 signal PC : std_logic_vector(31 downto 0);
+signal D : std_logic_vector(31 downto 0);
 -------------------------------------------
 
 signal execution_state: integer := 0; -- 0=initial state, 1=onestep, 2=oneinstr, 3=cont, 4=done
@@ -168,7 +202,10 @@ signal ALU_operation: std_logic_vector(3 downto 0);
 signal ALU_write_enable_flag: std_logic;
 signal ALU_flags_out: std_logic_vector(3 downto 0);
 
-signal DM_write_enable: STD_LOGIC;
+signal DM_write_enable1: STD_LOGIC;
+signal DM_write_enable2: STD_LOGIC;
+signal DM_write_enable3: STD_LOGIC;
+signal DM_write_enable4: STD_LOGIC;
 signal DM_address: std_logic_vector(31 downto 0);
 signal DM_data: std_logic_vector(31 downto 0);
 signal DM_output: std_logic_vector(31 downto 0);
@@ -196,12 +233,18 @@ signal shifter_carry_out: std_logic;
 
 signal sign_extended_IR: std_logic_vector(31 downto 0);
 
+signal selected_byte_to_memory : std_logic_vector(7 downto 0);
+signal selected_half_word_to_memory : std_logic_vector(15 downto 0);
+
+signal selected_byte_to_reg : std_logic_vector(7 downto 0);
+signal selected_half_word_to_reg : std_logic_vector(15 downto 0);
+signal isbyte_or_hw: std_logic_vector(1 downto 0);
+
 signal L_bit: std_logic;
 signal I_bit: std_logic;
 signal U_bit: std_logic;
 signal S_bit : std_logic;
-
-
+signal P_bit : std_logic;
 begin
 
 --signals to simulate managing--
@@ -215,13 +258,20 @@ i_decoded_out <= i_decoded;
 DR_out <= DR;
 A_out <= A;
 B_out <= B;
+D_out <= D;
 RES_out <= RES;
 
 RF_write_enable <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
                       '1' when control_state=9 else
                       '0';
+dm_wr_enable1 <= DM_write_enable1;
+dm_wr_enable2 <= DM_write_enable2;
+dm_wr_enable3 <= DM_write_enable3;
+dm_wr_enable4 <= DM_write_enable4;
+data_to_dm <= DM_data;                 
 X_out <= X;
 --------------------------------
+
 
 --red state management--
 red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or control_state=7 or control_state=9) else
@@ -234,10 +284,40 @@ L_bit <= IR(20);
 I_bit <= IR(25);
 U_bit <= IR(23);
 S_bit <= IR(20);
+P_bit <= IR(24);
+
+--11 = byte, 00 = hw else 10
+isbyte_or_hw <= "11" when i_decoded="10101" and IR(6 downto 5)="10" else  -- signed byte
+          "11" when instr_class="01" and IR(22)='1' else --B_bit = 1 means unsigned byte
+          "00" when i_decoded="10101" and ( IR(6 downto 5)="01" or IR(6 downto 5)="11" ) else  --half word from DT_SH
+          "10";
+
 -----------------------------------------------------------------------------------
 
 
 ---combinational circuit--
+selected_byte_to_memory <=  B(7 downto 0) when (control_state=7) else  --selecting the lowest byte
+                            --B(31 downto 24) when (RES(1 downto 0)="00" and control_state=7) else --all below useful for STR_SH byte
+                            --B(23 downto 16) when (RES(1 downto 0)="01" and control_state=7) else
+                            --B(15 downto 8)  when (RES(1 downto 0)="10" and control_state=7) else
+                            --B(7 downto 0)   when (RES(1 downto 0)="11" and control_state=7) else 
+                           (others => '0');
+
+selected_half_word_to_memory <= B(15 downto 0) when (control_state=7) else --selecting the lowest half word
+                                --B(31 downto 16) when (RES(1)='0' and control_state=7) else --all below useful for STR_SH half word
+                                --B(15 downto 0) when (RES(1)='1' and control_state=7) else 
+                                (others => '0');
+
+selected_byte_to_reg <=    DM_output(7 downto 0)   when (RES(1 downto 0)="11" and control_state=8) else  --all below useful for LDR_SH byte
+                           DM_output(15 downto 8)  when (RES(1 downto 0)="10" and control_state=8) else
+                           DM_output(23 downto 16) when (RES(1 downto 0)="01" and control_state=8) else
+                           DM_output(31 downto 24) when (RES(1 downto 0)="00" and control_state=8) else
+                           (others => '0');
+
+selected_half_word_to_reg <=    DM_output(31 downto 16) when (RES(1)='0' and control_state=8) else --all below useful for STR_SH half word
+                                DM_output(15 downto 0) when (RES(1)='1' and control_state=8) else 
+                                (others => '0');
+
 
 RF_addr1 <= IR(19 downto 16); --A=RF[IR[19-16]]
 
@@ -246,26 +326,57 @@ RF_addr2 <= IR(3 downto 0) when control_state=1 else
             IR(11 downto 8) when control_state=10 else
             "0000";
 
+--DT_SH instr
+DM_write_enable1 <= '0' when control_state=7 and isbyte_or_hw="11" and RES(1 downto 0)/="00" else
+                    '0' when control_state=7 and isbyte_or_hw="00" and RES(1)/='0' else  
+                    '1' when control_state=7 else
+                    '0';
+DM_write_enable2 <= '0' when control_state=7 and isbyte_or_hw="11" and RES(1 downto 0)/="01" else
+                    '0' when control_state=7 and isbyte_or_hw="00" and RES(1)/='0' else
+                    '1' when control_state=7 else
+                    '0';
 
-DM_write_enable <= '1' when control_state=7 else '0';
+DM_write_enable3 <= '0' when control_state=7 and isbyte_or_hw="11" and RES(1 downto 0)/="10" else
+                    '0' when control_state=7 and isbyte_or_hw="00" and RES(1)/='1' else
+                    '1' when control_state=7 else
+                    '0';
 
-DM_data <= B when control_state=7 else
-           (others => '0');
+DM_write_enable4 <= '0' when control_state=7 and isbyte_or_hw="11" and RES(1 downto 0)/="11" else
+                    '0' when control_state=7 and isbyte_or_hw="00" and RES(1)/='1' else
+                    '1' when control_state=7 else
+                    '0';
 
-DM_address <= RES when control_state=7 else
-              RES When control_state=8 else
+DM_data <=  B when (control_state=7 and i_decoded /= "10101") else --not a DT_SH instr, simple str
+            (selected_byte_to_memory&selected_byte_to_memory&selected_byte_to_memory&selected_byte_to_memory) when (control_state=7 and isbyte_or_hw="11") else --when byte
+            (selected_half_word_to_memory&selected_half_word_to_memory) when (control_state=7 and isbyte_or_hw="00") else -- when half word
+            --"000000000000000000000000"&selected_byte_to_memory when (control_state=7 and selected_byte_to_memory(7)='0' and IR(6 downto 5)="10" and i_decoded="10101") else
+            --"111111111111111111111111"&selected_byte_to_memory when (control_state=7 and selected_byte_to_memory(7)='1' and IR(6 downto 5)="10" and i_decoded="10101") else
+            --"0000000000000000"&selected_half_word_to_memory when (control_state=7 and selected_half_word_to_memory(15)='0' and IR(6 downto 5)="11" and i_decoded="10101") else
+            --"1111111111111111"&selected_half_word_to_memory when (control_state=7 and selected_half_word_to_memory(15)='1' and IR(6 downto 5)="11" and i_decoded="10101") else
+            --"0000000000000000"&selected_half_word_to_memory when (control_state=7 and IR(6 downto 5)="01" and i_decoded="10101") else
+            (others => '0');
+
+DM_address <= RES when (control_state=7 and P_bit='1') else
+              A when (control_state=7 and P_bit='0') else
+              RES when (control_state=8 and P_bit='1') else
+              A when (control_state=8 and P_bit='0') else
               (others => '0');
 
 RF_addr_in_wp <= IR(15 downto 12) when control_state=9 else
                  IR(15 downto 12) when control_state=6 else
+                 IR(19 downto 16) when (control_state=7 and P_bit='0') else
+                 IR(19 downto 16) when (control_state=8 and P_bit='0') else
                 (others => '0');
 
 RF_data_in_wp <= DR when control_state=9 else
                  RES when control_state=6 else
+                 RES when (control_state=7 and P_bit='0') else
+                 RES when (control_state=8 and P_bit='0') else
                  (others => '0'); 
 
 RF_write_enable_wp <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
                       '1' when control_state=9 else
+                      '1' when P_bit='0' and (control_state=7 or control_state=8) else
                       '0';
 
 ALU_in1 <= PC when (control_state=0) else
@@ -274,8 +385,8 @@ ALU_in1 <= PC when (control_state=0) else
            (others => '0');
 
 ALU_in2 <= "00000000000000000000000000000100" when control_state=0 else
-            B when control_state=2 else
-            "00000000000000000000"&IR(11 downto 0) when control_state=3 else
+            D when (control_state=2 or control_state=3) else
+            --"00000000000000000000"&IR(11 downto 0) when control_state=3 else --old
             "00"&sign_extended_IR(31 downto 2) when (control_state=4 and sign_extended_IR(31)='0') else
             "11"&sign_extended_IR(31 downto 2) when (control_state=4 and sign_extended_IR(31)='1') else
             (others => '0');
@@ -289,8 +400,8 @@ ALU_write_enable_flag <= '1' when (i_decoded="00011" and control_state=2) else  
 
 ALU_operation <= IR(24 downto 21) when (control_state=2) else  -- ALU operation is basically opcode of DP
                  "0100" when (control_state=0 ) else
-                 "0100" when (control_state=3 and U_bit='1') else 
-                 "0010" when (control_state=3 and U_bit='0') else 
+                 "0100" when (control_state=3 and U_bit='1') else --ADD
+                 "0010" when (control_state=3 and U_bit='0') else --SUB
                  "0101" when (control_state=4) else
                  "1111"; -- None
 
@@ -306,6 +417,7 @@ sign_extended_IR <= "00000000"&IR(23 downto 0) when IR(23)='0' else
 
 shifter_type  <= "11" when (I_bit='1' and instr_class="00") else--ROTSPEC when DP immediate
                  IR(6 downto 5) when (I_bit='0' and instr_class="00") else
+                 IR(6 downto 5) when (I_bit='1' and instr_class="01") else -- DT
                  "00";
 shifter_amt <= X;
 shifter_input <= B;
@@ -327,13 +439,35 @@ IM_MAP: instruction_memory port map (
         spo => IM_output
         );
         
-DM_MAP: data_memory port map (
+DM_MAP1: data_memory1 port map (
         a => DM_address(9 downto 0),
-        d => DM_data,
+        d => DM_data(31 downto 24),
         clk => clock,
-        we => DM_write_enable,
-        spo => DM_output
+        we => DM_write_enable1,
+        spo => DM_output(31 downto 24)
         );
+DM_MAP2: data_memory2 port map (
+        a => DM_address(9 downto 0),
+        d => DM_data(23 downto 16),
+        clk => clock,
+        we => DM_write_enable2,
+        spo => DM_output(23 downto 16)
+        );
+DM_MAP3: data_memory3 port map (
+        a => DM_address(9 downto 0),
+        d => DM_data(15 downto 8),
+        clk => clock,
+        we => DM_write_enable3,
+        spo => DM_output(15 downto 8)
+        );
+DM_MAP4: data_memory4 port map (
+        a => DM_address(9 downto 0),
+        d => DM_data(7 downto 0),
+        clk => clock,
+        we => DM_write_enable4,
+        spo => DM_output(7 downto 0)
+        );
+
 
 RF_MAP: register_file port map(
         read_address1 => RF_addr1,
@@ -442,17 +576,27 @@ SHIFTER_MAP: shifter port map(
                     if (execution_state=1 or execution_state=2 or execution_state=3) then
                         case control_state is
                             when 0 =>
-                                control_state <= 1;
+                                if instr_class="00" and i_decoded /= "10101" and IR(24 downto 23)="10" and S_bit /= '1' then --dp
+                                    --dont change state
+                                elsif i_decoded = "10101" and L_bit='0' and IR(6 downto 5) /= "01" then
+                                   --dont change state
+                                elsif instr_class="01" and P_bit='0' and IR(21)/='0' then
+                                   --dont change state
+                                else
+                                    control_state <= 1;
+                                end if;
                             when 1 => 
-                                if (instr_class = "00") then    --DP
+                                if (instr_class = "00" and i_decoded/="10101") then    --DP
                                     control_state <= 10;
-                                elsif (instr_class = "01") then     --DT
-                                    control_state <= 3;
+                                elsif (instr_class = "01" or i_decoded="10101") then     --DT or DT_SH
+                                    control_state <= 12;
                                 elsif (instr_class = "10") then --branch
                                     control_state <= 4;
                                 elsif (instr_class = "11") then  --HALT
                                     control_state <= 5;
                                 end if;
+                            when 12 =>
+                                control_state <= 3;
                             when 2 =>
                                 control_state <= 6;
                             when 3 =>
@@ -501,13 +645,31 @@ SHIFTER_MAP: shifter port map(
                                 IR <= IM_output;
                                 PC <= ALU_out;
                             when 1 =>
-                                if (I_bit='0') then
-                                    A <= RF_output1;
+                                A <= RF_output1;
+                                if (instr_class="01" and I_bit='1') then --useful for DT shift imm
+                                    X <= IR(11 downto 7);
+                                else
+                                    X <= "00000";
+                                end if;
+
+                                if (i_decoded ="10101" and IR(22)='0') then --DT_SH imm
+                                    B <= ("000000000000000000000000"&IR(11 downto 8)&IR(3 downto 0));
+                                elsif (i_decoded ="10101" and IR(22)='1') then --DT_SH reg
+                                    B <= RF_output2;
+
+                                elsif (instr_class="01" and I_bit='0') then --DT imm
+                                    B <= ("00000000000000000000"&IR(11 downto 0));
+                                elsif (instr_class="01" and I_bit='1') then --DT reg
+                                    B <= RF_output2;
+
+                                elsif (I_bit='0') then  --DP reg
                                     B <= RF_output2;
                                 else
-                                    A <= RF_output1;
-                                    B <= ("000000000000000000000000"&IR(7 downto 0));
+                                    B <= ("000000000000000000000000"&IR(7 downto 0));      --DP imm
                                 end if;
+
+                            when 12 =>
+                                D <= shifter_output;
 
                             when 10 =>
                                 if (I_bit='0' and IR(4)='1') then
@@ -515,11 +677,11 @@ SHIFTER_MAP: shifter port map(
                                 elsif (I_bit='0' and IR(4)='0') then
                                     X <= IR(11 downto 7);
                                 elsif (I_bit='1') then
-                                    X <= IR(11 downto 8)&"0";
+                                    X <= IR(11 downto 8)&"0"; --ROTSPEC
                                     --something something   
                                 end if;
                             when 11 =>
-                                    B <= shifter_output;
+                                D <= shifter_output;
 
                             when 2 =>
                                 RES <= ALU_out;
@@ -540,9 +702,31 @@ SHIFTER_MAP: shifter port map(
                             when 6 =>
                                 -- do nothing because RF is automatically storing
                             when 7 =>
-                                -- again do nothing as DM automatically stores on next clock
+                                -- do nothing because DM and RF is automatically storing
                             when 8 =>
-                                DR <= DM_output;
+                                if (i_decoded="10101" and IR(6 downto 5)="10") then-- signed byte
+                                    if selected_byte_to_reg(7)='0' then
+                                        DR <= "000000000000000000000000"&selected_byte_to_reg;
+                                    else
+                                        DR <= "111111111111111111111111"&selected_byte_to_reg;
+                                    end if;
+
+                                elsif (i_decoded="10101" and IR(6 downto 5)="11") then-- signed half word
+                                    if selected_half_word_to_reg(15)='0' then
+                                        DR <= "0000000000000000"&selected_half_word_to_reg;
+                                    else
+                                        DR <= "1111111111111111"&selected_half_word_to_reg;
+                                    end if;
+
+                                elsif (i_decoded="10101" and IR(6 downto 5)="01") then-- unsigned half word
+                                    DR <= "0000000000000000"&selected_half_word_to_reg;
+
+                                elsif (instr_class="01" and IR(22)='1') then --DT instr with B bit = 1
+                                    DR <= "000000000000000000000000"&selected_byte_to_reg;
+                                else
+                                    DR <= DM_output;
+                                end if;
+                                
                             when 9 =>
                                 -- do nothing because RF is automatically storing
                             when others =>

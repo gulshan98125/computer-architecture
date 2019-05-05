@@ -1,0 +1,15 @@
+mov r1, #1
+mov r2, #102
+mov r2, [r2, LSL(6)]  -- r2 here becomes 6630
+strb r2 [r1,#2] -- with B_bit = 1, since RES(i.e address)(1 downto 0)="11" so 4th data memory has write enable = 1
+ldr r3 [r1, #2] --r3 here contains 7downto0 of 6630 which is 230 i.e.  000...011100110
+
+ldrsb r3 [r1, #2] --with SH="10" i.e. signed byte we get r3 = 111...111100110
+
+ldrsb r3 [r1, #2] -- with SH="11" i.e. signed hw, we get r3 again 230 i.e. 000...011100110
+
+
+
+
+102 = "000...01100110"
+6630 = "000...01100111100110"

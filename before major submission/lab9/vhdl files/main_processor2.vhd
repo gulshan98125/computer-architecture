@@ -19,18 +19,6 @@ entity main_processor is
            R1 : out std_logic_vector(31 downto 0);
            R2 : out std_logic_vector(31 downto 0);
            R3 : out std_logic_vector(31 downto 0);
-           R4 : out std_logic_vector(31 downto 0);
-           R5 : out std_logic_vector(31 downto 0);
-           R6 : out std_logic_vector(31 downto 0);
-           R7 : out std_logic_vector(31 downto 0);
-           R8 : out std_logic_vector(31 downto 0);
-           R9 : out std_logic_vector(31 downto 0);
-           R10 : out std_logic_vector(31 downto 0);
-           R11 : out std_logic_vector(31 downto 0);
-           R12 : out std_logic_vector(31 downto 0);
-           R13 : out std_logic_vector(31 downto 0);
-           R14 : out std_logic_vector(31 downto 0);
-           R15 : out std_logic_vector(31 downto 0);
            DR_out : out std_logic_vector(31 downto 0);
            A_out : out std_logic_vector(31 downto 0);
            B_out : out std_logic_vector(31 downto 0);
@@ -61,18 +49,6 @@ Port(
     r1 : out std_logic_vector(31 downto 0);
     r2 : out std_logic_vector(31 downto 0);
     r3 : out std_logic_vector(31 downto 0);
-    r4 : out std_logic_vector(31 downto 0);
-    r5 : out std_logic_vector(31 downto 0);
-    r6 : out std_logic_vector(31 downto 0);
-    r7 : out std_logic_vector(31 downto 0);
-    r8 : out std_logic_vector(31 downto 0);
-    r9 : out std_logic_vector(31 downto 0);
-    r10 : out std_logic_vector(31 downto 0);
-    r11 : out std_logic_vector(31 downto 0);
-    r12 : out std_logic_vector(31 downto 0);
-    r13 : out std_logic_vector(31 downto 0);
-    r14 : out std_logic_vector(31 downto 0);
-    r15 : out std_logic_vector(31 downto 0);
     clock: in std_logic
     );
 end component;
@@ -201,6 +177,11 @@ signal I_bit: std_logic;
 signal U_bit: std_logic;
 signal S_bit : std_logic;
 
+signal R0_signal: std_logic_vector(31 downto 0);
+signal R1_signal: std_logic_vector(31 downto 0);
+signal R2_signal: std_logic_vector(31 downto 0);
+signal R3_signal: std_logic_vector(31 downto 0);
+
 
 begin
 
@@ -216,6 +197,10 @@ DR_out <= DR;
 A_out <= A;
 B_out <= B;
 RES_out <= RES;
+R0 <= R0_signal;
+R1 <= R1_signal;
+R2 <= R2_signal;
+R3 <= R3_signal;
 
 RF_write_enable <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
                       '1' when control_state=9 else
@@ -349,22 +334,10 @@ RF_MAP: register_file port map(
         data_input_pc => RF_data_in_pc,
         data_output_pc => RF_data_out_pc,
         write_enable_pc => RF_write_enable_pc,
-        r0 => R0,
-        r1 => R1,
-        r2 => R2,
-        r3 => R3,
-        r4 => R4,
-        r5 => R5,
-        r6 => R6,
-        r7 => R7,
-        r8 => R8,
-        r9 => R9,
-        r10 => R10,
-        r11 => R11,
-        r12 => R12,
-        r13 => R13,
-        r14 => R14,
-        r15 => R15,
+        r0 => R0_signal,
+        r1 => R1_signal,
+        r2 => R2_signal,
+        r3 => R3_signal,
         clock => clock
         );
 
