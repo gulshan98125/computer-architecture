@@ -28,7 +28,7 @@
                ES_out : out integer;
                CS_out : out integer;
                instr_class_out: out std_logic_vector(1 downto 0);
-               i_decoded_out: out std_logic_vector(3 downto 0);
+               i_decoded_out: out std_logic_vector(4 downto 0);
                R0 : out std_logic_vector(31 downto 0);
                R1 : out std_logic_vector(31 downto 0);
                R2 : out std_logic_vector(31 downto 0);
@@ -50,7 +50,8 @@
                B_out : out std_logic_vector(31 downto 0);
                RES_out : out std_logic_vector(31 downto 0);
                flags_out : out std_logic_vector(3 downto 0);
-               RF_write_enable: out std_logic
+               RF_write_enable: out std_logic;
+               X_out: out std_logic_vector(4 downto 0)
                );
     end component;
     
@@ -70,7 +71,7 @@
     signal ES: integer;
     signal CS: integer;
     signal instr_class:  std_logic_vector(1 downto 0);
-    signal i_decoded:  std_logic_vector(3 downto 0);
+    signal i_decoded:  std_logic_vector(4 downto 0);
     signal flags: std_logic_vector(3 downto 0);
     signal RF_write_enable: std_logic;
     
@@ -90,6 +91,7 @@
     signal R13 : std_logic_vector(31 downto 0);
     signal R14 : std_logic_vector(31 downto 0);
     signal R15 : std_logic_vector(31 downto 0);
+    signal X: std_logic_vector(4 downto 0);
     signal fake_clock: std_logic := '0';
     signal counter : integer := 0;
     
@@ -175,7 +177,8 @@
              B_out => B,
              RES_out => RES,
              flags_out => flags,
-             RF_write_enable => RF_write_enable
+             RF_write_enable => RF_write_enable,
+             X_out => X
          );
          
     process(clk_tm)

@@ -669,7 +669,7 @@ SHIFTER_MAP: shifter port map(
                                 elsif (I_bit='0' and IR(4)='0') then
                                     X <= IR(11 downto 7);
                                 elsif (I_bit='1') then
-                                    X <= IR(11 downto 8)&"0"; --ROTSPEC
+                                    X <= "0"&IR(11 downto 8); --ROTSPEC
                                     --something something   
                                 end if;
                             when 11 =>

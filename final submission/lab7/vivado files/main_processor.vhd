@@ -14,7 +14,7 @@ entity main_processor is
            ES_out : out integer;
            CS_out : out integer;
            instr_class_out: out std_logic_vector(1 downto 0);
-           i_decoded_out: out std_logic_vector(4 downto 0);
+           i_decoded_out: out std_logic_vector(3 downto 0);
            R0 : out std_logic_vector(31 downto 0);
            R1 : out std_logic_vector(31 downto 0);
            R2 : out std_logic_vector(31 downto 0);
@@ -31,13 +31,12 @@ entity main_processor is
            R13 : out std_logic_vector(31 downto 0);
            R14 : out std_logic_vector(31 downto 0);
            R15 : out std_logic_vector(31 downto 0);
+           RF_write_enable: out std_logic;
            DR_out : out std_logic_vector(31 downto 0);
            A_out : out std_logic_vector(31 downto 0);
            B_out : out std_logic_vector(31 downto 0);
            RES_out : out std_logic_vector(31 downto 0);
-           flags_out : out std_logic_vector(3 downto 0);
-           RF_write_enable: out std_logic;
-           X_out : out std_logic_vector(4 downto 0)
+           flags_out : out std_logic_vector(3 downto 0)
            );
 end main_processor;
 
@@ -84,7 +83,6 @@ Port(
     operand2: in std_logic_vector(31 downto 0);
     result : out std_logic_vector(31 downto 0);
     carry :   in STD_LOGIC;
-    carry_from_shifter: in STD_LOGIC;
     control_operation: in std_logic_vector(3 downto 0);     --considering instructions are less than equal to 16
     write_enable_flag: in std_logic;                        -- change flags only when this is equal to 1
     flags_out: out std_logic_vector(3 downto 0)     --ZCNV
@@ -96,19 +94,9 @@ component instruction_decoder is
 Port(
     instruction: in std_logic_vector(31 downto 0);
     class: out std_logic_vector(1 downto 0);           -- DP=00, DT=01, branch=10, others = 11
-    i_decoded : out std_logic_vector(4 downto 0)  -- add,sub,cmp,etc
+    i_decoded : out std_logic_vector(3 downto 0)  -- add,sub,cmp,etc
     );
     
-end component;
-
-component shifter is
-Port(
-    shift_input: in std_logic_vector(31 downto 0);
-    shift_type: in std_logic_vector(1 downto 0);
-    shift_amt: in std_logic_vector(4 downto 0);
-    shift_output: out std_logic_vector(31 downto 0);
-    carry: out std_logic
-    );
 end component;
 
 --component adder_subtractor is
@@ -139,14 +127,11 @@ end component;
 
 --signals below
 
-
-
 -----------storing registers--------------
 signal IR : std_logic_vector(31 downto 0);
 signal DR : std_logic_vector(31 downto 0);
 signal A : std_logic_vector(31 downto 0);
 signal B : std_logic_vector(31 downto 0);
-signal X : std_logic_vector(4 downto 0); -- shift amount 5 bits
 signal RES : std_logic_vector(31 downto 0);
 signal PC : std_logic_vector(31 downto 0);
 -------------------------------------------
@@ -157,7 +142,7 @@ signal control_state:   integer := 0;
 -- RED STATES = 4,5,6,7,9
 signal red_state : STD_LOGIC := '0';
 
-signal i_decoded : std_logic_vector(4 downto 0);
+signal i_decoded : std_logic_vector(3 downto 0);
 signal instr_class : std_logic_vector(1 downto 0);
 
 signal ALU_in1 : std_logic_vector(31 downto 0);
@@ -186,28 +171,19 @@ signal RF_data_in_pc: std_logic_vector(31 downto 0);
 signal RF_data_out_pc: std_logic_vector(31 downto 0);
 signal RF_write_enable_pc: STD_LOGIC;
 
-
-signal shifter_input: std_logic_vector(31 downto 0);
-signal shifter_type: std_logic_vector(1 downto 0);
-signal shifter_amt: std_logic_vector(4 downto 0);
-signal shifter_output: std_logic_vector(31 downto 0);
-signal shifter_carry_out: std_logic;
-
-
 signal sign_extended_IR: std_logic_vector(31 downto 0);
 
 signal L_bit: std_logic;
 signal I_bit: std_logic;
-signal U_bit: std_logic;
-signal S_bit : std_logic;
-
 
 begin
 
---signals to simulate managing--
-flags_out <= ALU_flags_out;
+--output signals management---
+
 IR_out <= IR;
 PC_out <= PC;
+RF_data_in_pc <= PC;
+RF_write_enable_pc <= '1';
 ES_out <= execution_state;
 CS_out <= control_state;
 instr_class_out <= instr_class;
@@ -216,12 +192,11 @@ DR_out <= DR;
 A_out <= A;
 B_out <= B;
 RES_out <= RES;
+flags_out <= ALU_flags_out;
+RF_write_enable <= RF_write_enable_wp;
+------------------------------
 
-RF_write_enable <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
-                      '1' when control_state=9 else
-                      '0';
-X_out <= X;
---------------------------------
+
 
 --red state management--
 red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or control_state=7 or control_state=9) else
@@ -232,8 +207,6 @@ red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or 
 
 L_bit <= IR(20);
 I_bit <= IR(25);
-U_bit <= IR(23);
-S_bit <= IR(20);
 -----------------------------------------------------------------------------------
 
 
@@ -243,7 +216,6 @@ RF_addr1 <= IR(19 downto 16); --A=RF[IR[19-16]]
 
 RF_addr2 <= IR(3 downto 0) when control_state=1 else
             IR(15 downto 12) when control_state=3 else
-            IR(11 downto 8) when control_state=10 else
             "0000";
 
 
@@ -264,7 +236,7 @@ RF_data_in_wp <= DR when control_state=9 else
                  RES when control_state=6 else
                  (others => '0'); 
 
-RF_write_enable_wp <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
+RF_write_enable_wp <= '1' when control_state=6 and (i_decoded /= "0011") else  --not to change when compare
                       '1' when control_state=9 else
                       '0';
 
@@ -280,17 +252,11 @@ ALU_in2 <= "00000000000000000000000000000100" when control_state=0 else
             "11"&sign_extended_IR(31 downto 2) when (control_state=4 and sign_extended_IR(31)='1') else
             (others => '0');
 
-ALU_write_enable_flag <= '1' when (i_decoded="00011" and control_state=2) else  --CMP instruciton
-                         '1' when (i_decoded="10001" and control_state=2) else  -- CMN
-                         '1' when (i_decoded="01111" and control_state=2) else  --TST
-                         '1' when (i_decoded="10000" and control_state=2) else  --TEQ
-                         '1' when (S_bit='1' and instr_class="00" and control_state=2) else  -- DP instruction when S=1 and control state=2
+ALU_write_enable_flag <= '1' when ((instr_class="00" and i_decoded="0011") and control_state=2) else  --CMP instruciton
                          '0';
 
-ALU_operation <= IR(24 downto 21) when (control_state=2) else  -- ALU operation is basically opcode of DP
-                 "0100" when (control_state=0 ) else
-                 "0100" when (control_state=3 and U_bit='1') else 
-                 "0010" when (control_state=3 and U_bit='0') else 
+ALU_operation <= IR(24 downto 21) when (control_state=2) else
+                 "0100" when (control_state=0 or control_state=3) else
                  "0101" when (control_state=4) else
                  "1111"; -- None
 
@@ -298,19 +264,8 @@ ALU_carry_in <= '1' when control_state=4 else   --useful for PC=PC+S2+4
                 '0';
 
 
-
-
 sign_extended_IR <= "00000000"&IR(23 downto 0) when IR(23)='0' else
                     "11111111"&IR(23 downto 0);
-
-
-shifter_type  <= "11" when (I_bit='1' and instr_class="00") else--ROTSPEC when DP immediate
-                 IR(6 downto 5) when (I_bit='0' and instr_class="00") else
-                 "00";
-shifter_amt <= X;
-shifter_input <= B;
-
-
 --------------------------
 
 
@@ -373,18 +328,9 @@ ALU_MAP: ALU_and_flags port map(
             operand2=> ALU_in2,
             result => ALU_out,
             carry => ALU_carry_in,
-            carry_from_shifter => shifter_carry_out,
             control_operation => ALU_operation,
             write_enable_flag => ALU_write_enable_flag,
             flags_out=>ALU_flags_out
-        );
-
-SHIFTER_MAP: shifter port map(
-            shift_input => shifter_input,
-            shift_type => shifter_type,
-            shift_amt => shifter_amt,
-            shift_output => shifter_output,
-            carry => shifter_carry_out
         );
 
     --execution state FSM process
@@ -445,7 +391,7 @@ SHIFTER_MAP: shifter port map(
                                 control_state <= 1;
                             when 1 => 
                                 if (instr_class = "00") then    --DP
-                                    control_state <= 10;
+                                    control_state <= 2;
                                 elsif (instr_class = "01") then     --DT
                                     control_state <= 3;
                                 elsif (instr_class = "10") then --branch
@@ -473,10 +419,6 @@ SHIFTER_MAP: shifter port map(
                                 control_state <= 9;
                             when 9 =>
                                 control_state <= 0;
-                            when 10 =>
-                                control_state <= 11;
-                            when 11 =>
-                                control_state <= 2;
                             when others =>
                                 --do nothing
                         end case;
@@ -489,7 +431,7 @@ SHIFTER_MAP: shifter port map(
 
 
     -- main process---
-    process(clock)
+     process(clock)
         begin
             if rising_edge(clock) then
                 if (reset='1') then
@@ -508,33 +450,19 @@ SHIFTER_MAP: shifter port map(
                                     A <= RF_output1;
                                     B <= ("000000000000000000000000"&IR(7 downto 0));
                                 end if;
-
-                            when 10 =>
-                                if (I_bit='0' and IR(4)='1') then
-                                    X <= RF_output2(4 downto 0);
-                                elsif (I_bit='0' and IR(4)='0') then
-                                    X <= IR(11 downto 7);
-                                elsif (I_bit='1') then
-                                    X <= "0"&IR(11 downto 8);
-                                    --something something   
-                                end if;
-                            when 11 =>
-                                    B <= shifter_output;
-
                             when 2 =>
                                 RES <= ALU_out;
                             when 3 =>
                                 RES <= ALU_out;
                                 B <= RF_output2;
                             when 4 =>
-                                if (instr_class="10" and i_decoded="00111" and ALU_flags_out(0)='1') then -- beq
+                                if (instr_class="10" and i_decoded="0111" and ALU_flags_out(0)='1') then -- beq
                                     PC <= ALU_out(29 downto 0)&"00";
-                                elsif (instr_class="10" and i_decoded="01000" and ALU_flags_out(0)='0') then  --bne
+                                elsif (instr_class="10" and i_decoded="1000" and ALU_flags_out(0)='0') then  --bne
                                     PC <= ALU_out(29 downto 0)&"00";
-                                elsif (instr_class="10" and i_decoded="00110") then  --b
+                                elsif (instr_class="10" and i_decoded="0110") then  --b
                                     PC <= ALU_out(29 downto 0)&"00";
                                 end if;
-                                
                             when 5 =>
                                 -- HALT state, do nothing
                             when 6 =>

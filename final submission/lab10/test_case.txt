@@ -8,8 +8,18 @@ ldrsb r3, [r1, #2] --with SH="10" i.e. signed byte we get r3 = 111...11110000000
 
 ldrsh r3, [r1, #2] -- with SH="11" i.e. signed hw, we get r3 again 128 i.e. 000...010000000
 
+mov r1, #1 ror1
+mov r1, r1 asr 28 --r1 here becomes -8
 
+mov r2, #102
+MUL r0, r1, r2 -- r0 here gets -816
+MLA r0, r1, r2, r3 ; r0 = (r1 * r2) + r3 i.e. r0 now has -816+128= -688
+
+SMULL r4,r5, r1,r2  --r5:r4 = r2*r1 , now r5 will get -1 i.e. 111...11 and r4 will get -816
 
 
 102 = "000...01100110"
 6630 = "000...01100111100110"
+
+-688 = 111...110101010000
+-816 = 111...110011010000

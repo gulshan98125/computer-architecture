@@ -1,7 +1,6 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.all;
-use IEEE.STD_LOGIC_ARITH.all;
-use IEEE.STD_LOGIC_UNSIGNED.all;
+Library IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
 
 entity main_processor is
     Port ( clock : in STD_LOGIC;
@@ -239,6 +238,11 @@ signal selected_half_word_to_memory : std_logic_vector(15 downto 0);
 signal selected_byte_to_reg : std_logic_vector(7 downto 0);
 signal selected_half_word_to_reg : std_logic_vector(15 downto 0);
 signal isbyte_or_hw: std_logic_vector(1 downto 0);
+signal mul_Rn33 : std_logic_vector(32 downto 0);
+signal mul_Rs33 : std_logic_vector(32 downto 0);
+signal mul_Rm33 : std_logic_vector(32 downto 0);
+signal mul_Rd33 : std_logic_vector(32 downto 0);
+signal mul_temp : std_logic_vector(65 downto 0);
 
 signal L_bit: std_logic;
 signal I_bit: std_logic;
@@ -261,9 +265,7 @@ B_out <= B;
 D_out <= D;
 RES_out <= RES;
 
-RF_write_enable <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
-                      '1' when control_state=9 else
-                      '0';
+RF_write_enable <= RF_write_enable_wp;
 dm_wr_enable1 <= DM_write_enable1;
 dm_wr_enable2 <= DM_write_enable2;
 dm_wr_enable3 <= DM_write_enable3;
@@ -274,7 +276,7 @@ X_out <= X;
 
 
 --red state management--
-red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or control_state=7 or control_state=9) else
+red_state <= '1' when (control_state=4 or control_state=5 or control_state=6 or control_state=7 or control_state=9 or control_state=15) else
              '0';
 ------------------------
 
@@ -319,11 +321,13 @@ selected_half_word_to_reg <=    DM_output(31 downto 16) when (RES(1)='0' and con
                                 (others => '0');
 
 
-RF_addr1 <= IR(19 downto 16); --A=RF[IR[19-16]]
+RF_addr1 <= IR(15 downto 12) when control_state=13 else --mul_Rn,RdLo
+            IR(19 downto 16); --A=RF[IR[19-16]]
 
 RF_addr2 <= IR(3 downto 0) when control_state=1 else
             IR(15 downto 12) when control_state=3 else
             IR(11 downto 8) when control_state=10 else
+            IR(11 downto 8) when control_state=13 else --mul_Rs
             "0000";
 
 --DT_SH instr
@@ -366,17 +370,45 @@ RF_addr_in_wp <= IR(15 downto 12) when control_state=9 else
                  IR(15 downto 12) when control_state=6 else
                  IR(19 downto 16) when (control_state=7 and P_bit='0') else
                  IR(19 downto 16) when (control_state=8 and P_bit='0') else
+                 IR(19 downto 16) when (control_state=14) else
+                 IR(15 downto 12) when (control_state=15) else
                 (others => '0');
+
+mul_temp <= std_logic_vector(signed(mul_Rm33)*signed(mul_Rs33)) when control_state=14 and IR(24 downto 22)="000" and IR(21)='0' else --mul
+            std_logic_vector(signed(mul_Rm33)*signed(mul_Rs33) + signed("000000000000000000000000000000000"&mul_Rn33)) when control_state=14 and IR(24 downto 22)="000" and IR(21)='1' else --mla
+            std_logic_vector(unsigned(mul_Rm33)*unsigned(mul_Rs33)) when control_state=14 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='1' else --UMULL RdHi
+            std_logic_vector(unsigned(mul_Rm33)*unsigned(mul_Rs33)) when control_state=15 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='1' else --UMULL RdLo
+            std_logic_vector(signed(mul_Rm33)*signed(mul_Rs33)) when control_state=14 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='0' else --SMULL RdHi
+            std_logic_vector(signed(mul_Rm33)*signed(mul_Rs33)) when control_state=15 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='0' else --SMULL RdLo
+            std_logic_vector(unsigned(mul_Rm33)*unsigned(mul_Rs33) + unsigned(mul_Rd33&mul_Rn33)) when control_state=14 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='1' else --UMLAL RdHi
+            std_logic_vector(unsigned(mul_Rm33)*unsigned(mul_Rs33) + unsigned(mul_Rd33&mul_Rn33)) when control_state=15 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='1' else --UMLAL RdLo
+            std_logic_vector(signed(mul_Rm33)*signed(mul_Rs33) + signed(mul_Rd33&mul_Rn33)) when control_state=14 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='0' else --SMLAL RdHi
+            std_logic_vector(signed(mul_Rm33)*signed(mul_Rs33) + signed(mul_Rd33&mul_Rn33))  when control_state=15 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='0' else --SMLAL RdLo
+            (others => '0');
 
 RF_data_in_wp <= DR when control_state=9 else
                  RES when control_state=6 else
                  RES when (control_state=7 and P_bit='0') else
                  RES when (control_state=8 and P_bit='0') else
+                 mul_temp(31 downto 0) when control_state=14 and IR(24 downto 22)="000" and IR(21)='0' else --mul
+                 mul_temp(31 downto 0) when control_state=14 and IR(24 downto 22)="000" and IR(21)='1' else --mla
+                 mul_temp(63 downto 32) when control_state=14 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='1' else --UMULL RdHi
+                 mul_temp(31 downto 0) when control_state=15 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='1' else --UMULL RdLo
+                 mul_temp(63 downto 32) when control_state=14 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='0' else --SMULL RdHi
+                 mul_temp(31 downto 0) when control_state=15 and IR(24 downto 23)="01" and IR(21)='0' and IR(22)='0' else --SMULL RdLo
+
+                 mul_temp(63 downto 32) when control_state=14 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='1' else --UMLAL RdHi
+                 mul_temp(31 downto 0) when control_state=15 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='1' else --UMLAL RdLo
+
+                 mul_temp(63 downto 32) when control_state=14 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='0' else --SMLAL RdHi
+                 mul_temp(31 downto 0) when control_state=15 and IR(24 downto 22)="000" and IR(21)='0' and IR(22)='0' else --SMLAL RdLo
                  (others => '0'); 
 
 RF_write_enable_wp <= '1' when (control_state=6 and ((i_decoded /= "00011") and (i_decoded/="01111") and (i_decoded/="10000") and (i_decoded/="10001"))) else  --not to change when cmp,tst,teq,cmn
                       '1' when control_state=9 else
                       '1' when P_bit='0' and (control_state=7 or control_state=8) else
+                      '1' when control_state=14 else
+                      '1' when control_state=15 and IR(24 downto 23)="01" else
                       '0';
 
 ALU_in1 <= PC when (control_state=0) else
@@ -578,7 +610,9 @@ SHIFTER_MAP: shifter port map(
                             when 0 =>
                                 control_state <= 1;
                             when 1 => 
-                                if (instr_class = "00" and i_decoded/="10101") then    --DP
+                                if (i_decoded="10110") then --mul
+                                    control_state <= 13;
+                                elsif (instr_class = "00" and i_decoded/="10101") then    --DP
                                     control_state <= 10;
                                 elsif (instr_class = "01" or i_decoded="10101") then     --DT or DT_SH
                                     control_state <= 12;
@@ -589,6 +623,12 @@ SHIFTER_MAP: shifter port map(
                                 end if;
                             when 12 =>
                                 control_state <= 3;
+                            when 13 =>
+                                control_state <= 14;
+                            when 14 =>
+                                control_state <= 15;
+                            when 15 =>
+                                control_state <= 0;
                             when 2 =>
                                 control_state <= 6;
                             when 3 =>
@@ -656,10 +696,33 @@ SHIFTER_MAP: shifter port map(
 
                                 elsif (I_bit='0') then  --DP reg
                                     B <= RF_output2;
+                                elsif (i_decoded="10110") then  --for mul
+                                    B <= RF_output2;
                                 else
                                     B <= ("000000000000000000000000"&IR(7 downto 0));      --DP imm
                                 end if;
 
+                            when 13 =>
+                                mul_Rn33(31 downto 0) <= RF_output1;
+                                mul_Rs33(31 downto 0) <= RF_output2;
+                                mul_Rd33(31 downto 0) <= A;
+                                mul_Rm33(31 downto 0) <= B;
+                                if IR(24 downto 23)="01" and IR(22)='0' then --SMULL condition
+                                    mul_Rn33(32) <= RF_output1(31);
+                                    mul_Rs33(32) <= RF_output2(31);
+                                    mul_Rd33(32) <= A(31);
+                                    mul_Rm33(32) <= B(31);
+                                else
+                                    mul_Rn33(32) <= '0';
+                                    mul_Rs33(32) <= '0';
+                                    mul_Rd33(32) <= '0';
+                                    mul_Rm33(32) <= '0';
+                                end if;
+                            when 14 =>
+                                -- do nothing
+                            when 15 =>
+                                -- do nothing
+                                
                             when 12 =>
                                 D <= shifter_output;
 

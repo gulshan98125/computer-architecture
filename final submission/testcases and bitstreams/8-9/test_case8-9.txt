@@ -1,4 +1,15 @@
 mov r1, #1
+mov r2, #100
+add r1, r1, [r1, LSL(r1)]	--r1 here becomes 3 
+add r1, r1, [r1, LSL(4)] -- r1 here becomes is 51
+add r1, r1, [r1,LSR(4)] --r1 here becomes 54
+mov r3, [r2, LSR(5)]  --r3 here becomes 3
+mov r1, [r1,ASR(5)] -- r1 here becomes 1
+mov r3 , [r2, ROR(5)] -- r3 here is of form "00100...0011"
+
+HALT
+
+mov r1, #1
 mov r2, #102
 mov r2, r2, LSL #6  -- r2 here becomes 6528
 strb r2, [r1, #2] -- with B_bit = 1, since RES(i.e address)(1 downto 0)="11" so 4th data memory has write enable = 1

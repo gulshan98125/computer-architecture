@@ -1,0 +1,8 @@
+mov r1, #1
+mov r2, #100
+add r1, r1, [r1, LSL(r1)]	--r1 here becomes 3 
+add r1, r1, [r1, LSL(4)] -- r1 here becomes is 51
+add r1, r1, [r1,LSR(4)] --r1 here becomes 54
+mov r3, [r2, LSR(5)]  --r3 here becomes 3
+mov r1, [r1,ASR(5)] -- r1 here becomes 1
+mov r3 , [r2, ROR(5)] -- r3 here is of form "00100...0011"
